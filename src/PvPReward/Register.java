@@ -1,8 +1,8 @@
 
 package PvPReward;
 
-import com.nijikokun.register.payment.Method;
-import com.nijikokun.register.payment.Method.MethodAccount;
+import com.codisimus.pvpreward.register.payment.Method;
+import com.codisimus.pvpreward.register.payment.Method.MethodAccount;
 import org.bukkit.entity.Player;
 
 /**
@@ -21,8 +21,7 @@ public class Register {
      * @return the double of the percent of money of a players account balance
      */
     protected static double getPercentMoney(Player deaded, double percent) {
-        MethodAccount account = econ.getAccount(deaded.getName());
-        return account.balance() * percent;
+        return econ.getAccount(deaded.getName()).balance() * percent;
     }
 
     /**
@@ -33,6 +32,8 @@ public class Register {
      * @return true if the transaction was successful
      */
     protected static boolean takeMoney(Player deaded, double amount) {
+        if (amount == 0)
+            return false;
         MethodAccount account = econ.getAccount(deaded.getName());
         if (!account.hasEnough(amount))
             return false;

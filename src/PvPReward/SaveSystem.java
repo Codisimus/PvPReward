@@ -93,10 +93,9 @@ class SaveSystem {
      * @return The Record of the Player
      */
     public static Record findRecord(String player) {
-        for(Record record : records) {
+        for(Record record : records)
             if (record.player.equals(player))
                 return record;
-        }
         Record newRecord = new Record(player, 0, 0, 0);
         addRecord(newRecord);
         return newRecord;

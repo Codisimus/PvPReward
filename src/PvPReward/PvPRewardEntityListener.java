@@ -22,6 +22,7 @@ public class PvPRewardEntityListener extends EntityListener {
     protected static String deathTollType;
     protected static String deathTollMessage;
     protected static double deathToll;
+    protected static boolean disableTollForPvP;
     protected static boolean digGraves;
     protected static String rewardType;
     protected static int percent;
@@ -59,7 +60,6 @@ public class PvPRewardEntityListener extends EntityListener {
             Record deadedRecord = SaveSystem.findRecord(deaded.getName());
             if (digGraves)
                 deadedRecord.digGrave(event.getDrops());
-            dropMoney(deaded);
             rewardPvP(deaded, deadedRecord);
         }
     }
@@ -78,6 +78,8 @@ public class PvPRewardEntityListener extends EntityListener {
         if (deathTollType.equalsIgnoreCase("Percent"))
             dropped = Register.getPercentMoney(deaded, deathToll/100);
         dropped = trim(dropped);
+        if (dropped == 0)
+            return;
         Register.takeMoney(deaded, dropped);
         deaded.sendMessage(getMsg(deathTollMessage, dropped, "", "", ""));
     }
@@ -90,11 +92,15 @@ public class PvPRewardEntityListener extends EntityListener {
      */
     protected static void rewardPvP(Player deaded, Record deadedRecord) {
         String attacker = deadedRecord.getKiller();
+        if (attacker.equals("")) {
+            dropMoney(deaded);
+            return;
+        }
+        if (!disableTollForPvP)
+            dropMoney(deaded);
         if (attacker.equals(deadedRecord.player))
             return;
         deadedRecord.setAttacker("");
-        if (attacker.equals(""))
-            return;
         Player killer = PvPReward.server.getPlayer(attacker);
         if (PvPReward.permissions != null && !PvPReward.hasPermisson(killer, deaded))
             return;
@@ -107,7 +113,7 @@ public class PvPRewardEntityListener extends EntityListener {
         if (rewardType.equalsIgnoreCase("PercentKDR"))
             reward = Register.getPercentMoney(deaded, (deadedKDR/killerKDR)/100);
         else if (rewardType.equalsIgnoreCase("Percent"))
-            reward = Register.getPercentMoney(deaded, percent/100);
+            reward = Register.getPercentMoney(deaded, percent/100.0);
         else if (rewardType.equalsIgnoreCase("PercentRange") || rewardType.equalsIgnoreCase("Karma")) {
             if (rewardType.equalsIgnoreCase("Karma")) {
                 int deadedKarma = deadedRecord.karma;
@@ -139,9 +145,10 @@ public class PvPRewardEntityListener extends EntityListener {
                         return;
                 int multiplier = (int)((killerKarma - amount) / threshold);
                 bonus = multiplier * (modifier);
-                if (bonus > 0)
+                if (bonus > 0) {
                     if (bonus > max)
                         bonus = max;
+                }
                 else if (bonus < 0)
                     if (bonus < max)
                         bonus = max;
@@ -180,7 +187,10 @@ public class PvPRewardEntityListener extends EntityListener {
     protected static String getMsg(String msg, double amount, String killed, String killer, String karma) {
         msg = msg.replaceAll("<killed>", killed);
         msg = msg.replaceAll("<killer>", killer);
-        msg = msg.replaceAll("<karma>", karma);
+        if (PvPReward.negative && !karma.equals("0"))
+            msg = msg.replaceAll("<karma>", "-"+karma);
+        else
+            msg = msg.replaceAll("<karma>", karma);
         msg = msg.replaceAll("<amount>", Register.format(amount).replace(".00", ""));
         return msg;
     }

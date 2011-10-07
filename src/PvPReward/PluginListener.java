@@ -2,10 +2,9 @@
 package PvPReward;
 
 import org.bukkit.event.server.ServerListener;
-import com.nijikokun.bukkit.Permissions.Permissions;
-import com.nijikokun.register.payment.Methods;
+import com.codisimus.pvpreward.register.payment.Methods;
 import org.bukkit.event.server.PluginEnableEvent;
-import org.bukkit.plugin.Plugin;
+import ru.tehkode.permissions.bukkit.PermissionsEx;
 
 /**
  * Checks for plugins whenever one is enabled
@@ -13,31 +12,61 @@ import org.bukkit.plugin.Plugin;
  */
 public class PluginListener extends ServerListener {
     public PluginListener() { }
-    private Methods methods = new Methods();
     protected static Boolean useOP;
 
     @Override
     public void onPluginEnable(PluginEnableEvent event) {
-        if (PvPReward.permissions == null && !useOP) {
-            Plugin permissions = PvPReward.pm.getPlugin("Permissions");
-            if (permissions != null) {
-                PvPReward.permissions = ((Permissions)permissions).getHandler();
-                System.out.println("[PvPReward] Successfully linked with Permissions!");
-            }
+        linkPermissions();
+        linkEconomy();
+    }
+
+    /**
+     * Find and link a Permission plugin
+     *
+     */
+    private void linkPermissions() {
+        //Return if we have already have a permissions plugin
+        if (PvPReward.permissions != null)
+            return;
+
+        //Return if PermissionsEx is not enabled
+        if (!PvPReward.pm.isPluginEnabled("PermissionsEx"))
+            return;
+
+        //Return if OP permissions will be used
+        if (useOP)
+            return;
+
+        PvPReward.permissions = PermissionsEx.getPermissionManager();
+        System.out.println("[PvPReward] Successfully linked with PermissionsEx!");
+    }
+
+    /**
+     * Find and link an Economy plugin
+     *
+     */
+    private void linkEconomy() {
+        //Return if we already have an Economy plugin
+        if (Methods.hasMethod())
+            return;
+
+        //Return if no Economy is wanted
+        if (Register.economy.equalsIgnoreCase("none"))
+            return;
+
+        //Set preferred plugin if there is one
+        if (!Register.economy.equalsIgnoreCase("auto"))
+            Methods.setPreferred(Register.economy);
+
+        Methods.setMethod(PvPReward.pm);
+
+        //Reset Methods if the preferred Economy was not found
+        if (!Methods.getMethod().getName().equalsIgnoreCase(Register.economy) && !Register.economy.equalsIgnoreCase("auto")) {
+            Methods.reset();
+            return;
         }
-        if (Register.economy == null)
-            System.err.println("[PvPReward] Config file outdated, Please regenerate");
-        else if (!methods.hasMethod()) {
-            try {
-                methods.setMethod(PvPReward.pm.getPlugin(Register.economy));
-                if (methods.hasMethod()) {
-                    Register.econ = methods.getMethod();
-                    System.out.println("[PvPReward] Successfully linked with "+
-                            Register.econ.getName()+" "+Register.econ.getVersion()+"!");
-                }
-            }
-            catch (Exception e) {
-            }
-        }
+
+        Register.econ = Methods.getMethod();
+        System.out.println("[PvPReward] Successfully linked with "+Register.econ.getName()+" "+Register.econ.getVersion()+"!");
     }
 }

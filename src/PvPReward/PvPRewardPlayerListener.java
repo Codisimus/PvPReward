@@ -34,15 +34,20 @@ public class PvPRewardPlayerListener extends PlayerListener {
                 if (split[1].startsWith(PvPReward.outlawName)) {
                     player.sendMessage("§eCurrent "+PvPReward.outlawName+"s: ");
                     LinkedList<Record> records = SaveSystem.getRecords();
-                    for (Record record : records) {
+                    for (Record record : records)
                         if (record.karma > PvPRewardEntityListener.amount)
                             player.sendMessage("§2"+record.player);
-                    }
                 }
                 else if (split[1].equals(PvPReward.karmaName)) {
                     Record record = SaveSystem.findRecord(player.getName());
-                    player.sendMessage("§2Current "+PvPReward.karmaName+" level:§b "+record.karma);
-                    player.sendMessage("§2"+PvPReward.outlawName+" status at §b"+ (int)PvPRewardEntityListener.amount);
+                    if (PvPReward.negative && record.karma != 0) {
+                        player.sendMessage("§2Current "+PvPReward.karmaName+" level:§b -"+record.karma);
+                        player.sendMessage("§2"+PvPReward.outlawName+" status at §b-"+ (int)PvPRewardEntityListener.amount);
+                    }
+                    else {
+                        player.sendMessage("§2Current "+PvPReward.karmaName+" level:§b "+record.karma);
+                        player.sendMessage("§2"+PvPReward.outlawName+" status at §b"+ (int)PvPRewardEntityListener.amount);
+                    }
                 }
                 else if (split[1].equals("kdr")) {
                     Record record = SaveSystem.findRecord(player.getName());
@@ -54,39 +59,33 @@ public class PvPRewardPlayerListener extends PlayerListener {
                     int rank = 1;
                     double kdr = SaveSystem.findRecord(player.getName()).kdr;
                     LinkedList<Record> records = SaveSystem.getRecords();
-                    for (Record record : records) {
+                    for (Record record : records)
                         if (record.kdr > kdr)
                             rank++;
-                    }
                     player.sendMessage("§2Current Rank:§b "+rank);
                 }
                 else if (split[1].equals("top")) {
                     LinkedList<Record> records = SaveSystem.getRecords();
                     Record one = records.getFirst();
-                    for (Record record : records) {
+                    for (Record record : records)
                         if (record.kdr > one.kdr)
                             one = record;
-                    }
                     Record two = records.getFirst();
-                    for (Record record : records) {
+                    for (Record record : records)
                         if (record.kdr > two.kdr && record.kdr < one.kdr)
                             two = record;
-                    }
                     Record three = records.getFirst();
-                    for (Record record : records) {
+                    for (Record record : records)
                         if (record.kdr > three.kdr && record.kdr < two.kdr)
                                 three = record;
-                    }
                     Record four = records.getFirst();
-                    for (Record record : records) {
+                    for (Record record : records)
                         if (record.kdr > four.kdr && record.kdr < three.kdr)
                             four = record;
-                    }
                     Record five = records.getFirst();
-                    for (Record record : records) {
+                    for (Record record : records)
                         if (record.kdr > five.kdr && record.kdr < four.kdr)
                             five = record;
-                    }
                     player.sendMessage("§eTop Five KDRs:");
                     player.sendMessage("§2"+one.player+":§b "+one.kdr);
                     player.sendMessage("§2"+two.player+":§b "+two.kdr);
@@ -94,10 +93,57 @@ public class PvPRewardPlayerListener extends PlayerListener {
                     player.sendMessage("§2"+four.player+":§b "+four.kdr);
                     player.sendMessage("§2"+five.player+":§b "+five.kdr);
                 }
+                else if (split[1].equals("reset")) {
+                    if (!PvPReward.hasPermisson(player, "reset")) {
+                        player.sendMessage("You do not have permission to do that.");
+                        return;
+                    }
+                    try {
+                        Record record = null;
+                        if (split.length != 4)
+                            record = SaveSystem.findRecord(player.getName());
+                        else if (split[3].equals("all")) {
+                            if (split[2].equals("kdr")) {
+                                for (Record tempRecord: SaveSystem.getRecords()) {
+                                    tempRecord.kills = 0;
+                                    tempRecord.deaths = 0;
+                                    tempRecord.kdr = 0;
+                                }
+                            }
+                            else if (split[2].equals(PvPReward.karmaName))
+                                for (Record tempRecord: SaveSystem.getRecords())
+                                    tempRecord.karma = 0;
+                            else
+                                throw new Exception();
+                            return;
+                        }
+                        else
+                            record = SaveSystem.findRecord(split[3]);
+                        if (split[2].equals("kdr")) {
+                            record.kills = 0;
+                            record.deaths = 0;
+                            record.kdr = 0;
+                        }
+                        else if (split[2].equals(PvPReward.karmaName))
+                            record.karma = 0;
+                        else
+                            throw new Exception();
+                        SaveSystem.save();
+                    }
+                    catch (Exception resetHelp) {
+                        player.sendMessage("§e  PvPReward Reset Help Page:");
+                        player.sendMessage("§2/pvp reset kdr§b Set your kills and deaths to 0");
+                        player.sendMessage("§2/pvp reset kdr [Player]§b Set the Player's kills and deaths to 0");
+                        player.sendMessage("§2/pvp reset kdr all§b Set everyone's kills and deaths to 0");
+                        player.sendMessage("§2/pvp reset "+PvPReward.karmaName+"§b Set your "+PvPReward.karmaName+" level to 0");
+                        player.sendMessage("§2/pvp reset "+PvPReward.karmaName+" [Player]§b Set the Player's "+PvPReward.karmaName+" level to 0");
+                        player.sendMessage("§2/pvp reset "+PvPReward.karmaName+" all§b Set everyone's "+PvPReward.karmaName+" level to 0");
+                    }
+                }
                 else
                     throw new Exception();
             }
-            catch (Exception e) {
+            catch (Exception help) {
                 player.sendMessage("§e  PvPReward Help Page:");
                 if (PvPRewardEntityListener.rewardType.equalsIgnoreCase("karma")) {
                     player.sendMessage("§2/pvp "+PvPReward.outlawName+"s§b List current "+PvPReward.outlawName+"s");
@@ -106,10 +152,9 @@ public class PvPRewardPlayerListener extends PlayerListener {
                 player.sendMessage("§2/pvp kdr§b List current KDR");
                 player.sendMessage("§2/pvp rank§b List current rank");
                 player.sendMessage("§2/pvp top§b List top 5 KDRs");
+                player.sendMessage("§2/pvp reset§b List Admin reset commands");
             }
         }
-        else
-            return;
     }
 
     @Override
@@ -117,11 +162,10 @@ public class PvPRewardPlayerListener extends PlayerListener {
         if (PvPRewardEntityListener.rewardType.equalsIgnoreCase("karma")) {
             Player player = event.getPlayer();
             LinkedList<Record> records = SaveSystem.getRecords();
-            for (Record record : records) {
+            for (Record record : records)
                 if (record.player.equals(player.getName()))
                     if (record.karma > PvPRewardEntityListener.amount)
                         player.setDisplayName(PvPReward.getPrefix(player.getName()));
-            }
         }
     }
 
@@ -129,7 +173,7 @@ public class PvPRewardPlayerListener extends PlayerListener {
     public void onPlayerTeleport (PlayerTeleportEvent event) {
         Player player = event.getPlayer();
         LinkedList<Record> records = SaveSystem.getRecords();
-        for (Record record : records) {
+        for (Record record : records)
             if (record.player.equals(player.getName())) {
                 if (!record.getKiller().equals("") && denyTele) {
                     player.sendMessage(denyTeleMessage);
@@ -138,20 +182,18 @@ public class PvPRewardPlayerListener extends PlayerListener {
                 }
                 return;
             }
-        }
     }
 
     @Override
     public void onPlayerQuit (PlayerQuitEvent event) {
         Player quiter = event.getPlayer();
         LinkedList<Record> records = SaveSystem.getRecords();
-        for (Record record : records) {
+        for (Record record : records)
             if (record.player.equals(quiter.getName())) {
                 if (!record.getKiller().equals("") && penalizeLoggers)
                     PvPRewardEntityListener.rewardPvP(quiter, record);
                 return;
             }
-        }
     }
     
     @Override

@@ -1,7 +1,6 @@
 
 package PvPReward;
 
-import com.nijiko.permissions.PermissionHandler;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -20,6 +19,7 @@ import org.bukkit.event.Event.Priority;
 import org.bukkit.event.Event.Type;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import ru.tehkode.permissions.PermissionManager;
 
 /**
  *
@@ -27,36 +27,31 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public class PvPReward extends JavaPlugin {
     protected static Server server;
-    protected static PermissionHandler permissions;
+    protected static PermissionManager permissions;
     protected static String outlawTag;
     protected static String karmaName;
     protected static String outlawName;
     private static int cooldownTime;
+    protected static boolean negative;
     protected static PluginManager pm;
     private Properties p;
 
     @Override
     public void onDisable () {
+        //Clear all graves
+        for (Record record: SaveSystem.getRecords())
+            if (record.signLocation != null)
+                record.signLocation.getBlock().setTypeId(0);
     }
 
     @Override
     public void onEnable () {
         server = getServer();
+        pm = server.getPluginManager();
         checkFiles();
         loadConfig();
         SaveSystem.loadFromFile();
-        PvPRewardPlayerListener playerListener = new PvPRewardPlayerListener();
-        PvPRewardEntityListener entityListener = new PvPRewardEntityListener();
-        pm = server.getPluginManager();
-        pm.registerEvent(Event.Type.PLUGIN_ENABLE, new PluginListener(), Priority.Monitor, this);
-        pm.registerEvent(Type.BLOCK_BREAK, new PvPRewardBlockListener(), Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_COMMAND_PREPROCESS, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_JOIN, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_TELEPORT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_QUIT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_INTERACT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.ENTITY_DAMAGE, entityListener, Priority.Normal, this);
-        pm.registerEvent(Type.ENTITY_DEATH, entityListener, Priority.Normal, this);
+        registerEvents();
         System.out.println("PvPReward "+this.getDescription().getVersion()+" is enabled!");
         if (cooldownTime != 0)
             cooldown();
@@ -64,13 +59,10 @@ public class PvPReward extends JavaPlugin {
     
     /**
      * Makes sure all needed files exist
-     * Register.jar is for economy support
+     *
      */
     private void checkFiles() {
-        File file = new File("lib/Register.jar");
-        if (!file.exists() || file.length() < 43000)
-            moveFile("Register.jar");
-        file = new File("plugins/PvPReward/config.properties");
+        File file = new File("plugins/PvPReward/config.properties");
         if (!file.exists())
             moveFile("config.properties");
     }
@@ -86,10 +78,6 @@ public class PvPReward extends JavaPlugin {
             JarFile jar = new JarFile("plugins/PvPReward.jar");
             ZipEntry entry = jar.getEntry(fileName);
             String destination = "plugins/PvPReward/";
-            if (fileName.equals("Register.jar")) {
-                System.out.println("[PvPReward] Moving Files... Please Reload Server");
-                destination = "lib/";
-            }
             File file = new File(destination.substring(0, destination.length()-1));
             if (!file.exists())
                 file.mkdir();
@@ -135,6 +123,7 @@ public class PvPReward extends JavaPlugin {
         PvPRewardEntityListener.deathTollMessage = loadValue("DeathTollMessage").replaceAll("&", "§");
         PvPRewardEntityListener.deathTollType = loadValue("DeathTollType");
         PvPRewardEntityListener.deathToll = Double.parseDouble(loadValue("DeathToll"));
+        PvPRewardEntityListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
         PvPRewardEntityListener.digGraves = Boolean.parseBoolean(loadValue("DigGraves"));
         PvPRewardPlayerListener.denyTeleMessage = loadValue("DenyTeleMessage").replaceAll("&", "§");
         PvPRewardPlayerListener.denyTele = Boolean.parseBoolean(loadValue("DenyTele"));
@@ -158,11 +147,14 @@ public class PvPReward extends JavaPlugin {
         PvPRewardEntityListener.modifier = Integer.parseInt(loadValue("OutlawModifier"))/100;
         PvPRewardEntityListener.max = Integer.parseInt(loadValue("ModifierMax"))/100;
         PvPRewardEntityListener.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
+        PvPReward.negative = Boolean.parseBoolean(loadValue("Negative"));
     }
 
     /**
-     * Prints error for missing values
-     * 
+     * Loads the given key and prints error if the key is missing
+     *
+     * @param key The key to be loaded
+     * @return The String value of the loaded key
      */
     private String loadValue(String key) {
         if (!p.containsKey(key)) {
@@ -170,6 +162,24 @@ public class PvPReward extends JavaPlugin {
             System.err.println("[PvPReward] Please regenerate config file");
         }
         return p.getProperty(key);
+    }
+    
+    /**
+     * Registers events for the PvPReward Plugin
+     *
+     */
+    private void registerEvents() {
+        PvPRewardPlayerListener playerListener = new PvPRewardPlayerListener();
+        PvPRewardEntityListener entityListener = new PvPRewardEntityListener();
+        pm.registerEvent(Event.Type.PLUGIN_ENABLE, new PluginListener(), Priority.Monitor, this);
+        pm.registerEvent(Type.BLOCK_BREAK, new PvPRewardBlockListener(), Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_COMMAND_PREPROCESS, playerListener, Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_JOIN, playerListener, Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_TELEPORT, playerListener, Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_QUIT, playerListener, Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_INTERACT, playerListener, Priority.Normal, this);
+        pm.registerEvent(Type.ENTITY_DAMAGE, entityListener, Priority.Normal, this);
+        pm.registerEvent(Type.ENTITY_DEATH, entityListener, Priority.Normal, this);
     }
 
     /**
@@ -184,8 +194,7 @@ public class PvPReward extends JavaPlugin {
     public static boolean hasPermisson(Player killer, Player deaded) {
         if (permissions != null)
             return permissions.has(killer, "pvpreward.getreward") && permissions.has(deaded, "pvpreward.givereward");
-        else
-            return true;
+        return true;
     }
     
     /**
@@ -197,9 +206,8 @@ public class PvPReward extends JavaPlugin {
      */
     public static boolean hasPermisson(Player player, String node) {
         if (permissions != null)
-            return permissions.has(player, "pvpreward.ignoredeathtoll");
-        else
-            return false;
+            return permissions.has(player, "pvpreward."+node);
+        return false;
     }
 
     /**

@@ -6,6 +6,7 @@ import java.util.List;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -130,11 +131,20 @@ class Record {
      */
     protected void digGrave(List<ItemStack> dropped) {
         grave.clear();
-        for (int i=0; i<dropped.size(); i++) {
+        for (int i=0; i<dropped.size(); i++)
             if (dropped.get(i) != null) {
                 grave.add(dropped.get(i));
                 dropped.remove(i);
             }
+        if (grave.isEmpty())
+            return;
+        try {
+            signLocation.getBlock().setTypeId(0);
+        }
+        catch (Exception e) {
+        }
+        while (lastKnown.getTypeId() != 0) {
+            lastKnown = lastKnown.getRelative(BlockFace.UP);
         }
         lastKnown.setType(Material.SIGN_POST);
         signLocation = lastKnown.getLocation();
@@ -147,11 +157,11 @@ class Record {
             public void run() {
                 try {
                     Thread.currentThread().sleep(graveTimeOut);
+                    signLocation.getBlock().setTypeId(0);
+                    signLocation = null;
                 }
                 catch (Exception e) {
                 }
-                lastKnown.setType(Material.AIR);
-                signLocation = null;
             }
         };
         dig.start();
@@ -165,10 +175,10 @@ class Record {
      */
     protected void robGrave(Player graveRobber) {
         PlayerInventory sack = graveRobber.getInventory();
-        for (ItemStack item : grave) {
+        for (ItemStack item : grave)
             sack.addItem(item);
-        }
         graveRobber.sendMessage(graveRob);
-        tombstone.getBlock().setType(Material.AIR);
+        signLocation.getBlock().setTypeId(0);
+        signLocation = null;
     }
 }

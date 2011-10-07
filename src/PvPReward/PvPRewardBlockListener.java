@@ -16,10 +16,9 @@ public class PvPRewardBlockListener extends BlockListener {
         if (block.getType().equals(Material.SIGN)) {
             Sign sign = (Sign)block;
             LinkedList<Record> records = SaveSystem.getRecords();
-            for(Record record : records) {
+            for(Record record : records)
                 if (record.tombstone.equals(sign))
                     event.setCancelled(true);
-            }
         }
     }
 }

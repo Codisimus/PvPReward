@@ -1,6 +1,6 @@
 name: PvPReward
 main: com.codisimus.plugins.pvpreward.PvPReward
-version: 1.2.0
+version: 1.2.0 dev
 author: Codisimus
 website: www.codisimus.com
 description: Killers steal money from their victims

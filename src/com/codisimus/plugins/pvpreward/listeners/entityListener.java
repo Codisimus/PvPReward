@@ -71,7 +71,7 @@ public class entityListener extends EntityListener {
         if (attacker.equals(wounded))
             return;
 
-        Record record = SaveSystem.findRecord(((Player)wounded).getName());
+        Record record = SaveSystem.getRecord(((Player)wounded).getName());
         record.startCombat(((Player)attacker).getName());
     }
 
@@ -88,7 +88,7 @@ public class entityListener extends EntityListener {
             return;
 
         Player deaded = (Player)event.getEntity();
-        Record record = SaveSystem.findRecord(deaded.getName());
+        Record record = SaveSystem.getRecord(deaded.getName());
 
         //Dig a grave for the killed Player if the option is enabled
         if (digGraves)
@@ -155,7 +155,7 @@ public class entityListener extends EntityListener {
         if (PvPReward.permissions != null && !PvPReward.hasPermisson(killer, deaded))
             return;
 
-        Record killerRecord = SaveSystem.findRecord(killer.getName());
+        Record killerRecord = SaveSystem.getRecord(killer.getName());
         double deadedKDR = deadedRecord.addDeath();
         double killerKDR = killerRecord.addKill();
         Random random = new Random();

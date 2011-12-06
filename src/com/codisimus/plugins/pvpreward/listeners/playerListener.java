@@ -38,7 +38,7 @@ public class playerListener extends PlayerListener {
             return;
 
         Player player = event.getPlayer();
-        Record record = SaveSystem.findRecord(player.getName());
+        Record record = SaveSystem.getRecord(player.getName());
 
         //Changes the Player's display name if they are an Outlaw
         if (record.karma > entityListener.amount)
@@ -57,7 +57,7 @@ public class playerListener extends PlayerListener {
             return;
 
         Player player = event.getPlayer();
-        Record record = SaveSystem.findRecord(player.getName());
+        Record record = SaveSystem.getRecord(player.getName());
 
         //Return if the Player is not in combat
         if (!record.inCombat)
@@ -82,7 +82,7 @@ public class playerListener extends PlayerListener {
             return;
 
         Player player = event.getPlayer();
-        Record record = SaveSystem.findRecord(player.getName());
+        Record record = SaveSystem.getRecord(player.getName());
 
         //Check if the Player is in combat
         if (record.inCombat)
@@ -115,7 +115,7 @@ public class playerListener extends PlayerListener {
         if (!player.getName().equals(name))
             return;
 
-        Record record = SaveSystem.findRecord(name);
+        Record record = SaveSystem.getRecord(name);
 
         //Return if the Player does not have a recent grave
         if (record == null || record.signLocation == null)

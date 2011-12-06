@@ -17,9 +17,7 @@ import org.bukkit.entity.Player;
  * @author Codisimus
  */
 public class commandListener implements CommandExecutor {
-    public static enum Action {
-        HELP, OUTLAWS, KARMA, KDR, RANK, TOP, RESET
-    }
+    public static enum Action { HELP, OUTLAWS, KARMA, KDR, RANK, TOP, RESET }
     
     /**
      * Listens for PvPReward commands to execute them
@@ -38,14 +36,24 @@ public class commandListener implements CommandExecutor {
         
         Player player = (Player)sender;
 
-        //Display help page if the Player did not add any arguments
+        //Display the help page if the Player did not add any arguments
         if (args.length == 0) {
             sendHelp(player);
             return true;
         }
         
+        Action action;
+        
+        try {
+            action = Action.valueOf(args[0].toUpperCase());
+        }
+        catch (Exception notEnum) {
+            sendHelp(player);
+            return true;
+        }
+        
         //Execute the correct command
-        switch (Action.valueOf(args[0])) {
+        switch (action) {
             case OUTLAWS:
                 if (args.length == 1)
                     outlaws(player);
@@ -57,27 +65,21 @@ public class commandListener implements CommandExecutor {
             case KARMA:
                 switch (args.length) {
                     case 1: karma(player, player.getName()); return true;
-                        
                     case 2: karma(player, args[1]); return true;
-                        
                     default: sendHelp(player); return true;
                 }
                 
             case KDR:
                 switch (args.length) {
                     case 1: kdr(player, player.getName()); return true;
-                        
                     case 2: kdr(player, args[1]); return true;
-                        
                     default: sendHelp(player); return true;
                 }
                 
             case RANK:
                 switch (args.length) {
                     case 1: rank(player, player.getName()); return true;
-                        
                     case 2: rank(player, args[1]); return true;
-                        
                     default: sendHelp(player); return true;
                 }
                 
@@ -125,7 +127,7 @@ public class commandListener implements CommandExecutor {
                     default: break;
                 }
                 
-                sendHelp(player);
+                sendResetHelp(player);
                 return true;
                 
             default: sendHelp(player); return true;
@@ -155,7 +157,12 @@ public class commandListener implements CommandExecutor {
      * @param name The name of the Record
      */
     public static void karma(Player player, String name) {
+        //Return if the Record does not exist
         Record record = SaveSystem.findRecord(name);
+        if (record == null) {
+            player.sendMessage("No PvP Record found for "+name);
+            return;
+        }
         
         //Add '-' before the karma values if negative is set to true
         if (PvPReward.negative && record.karma != 0) {
@@ -175,7 +182,13 @@ public class commandListener implements CommandExecutor {
      * @param name The name of the Record
      */
     public static void kdr(Player player, String name) {
+        //Return if the Record does not exist
         Record record = SaveSystem.findRecord(name);
+        if (record == null) {
+            player.sendMessage("No PvP Record found for "+name);
+            return;
+        }
+        
         player.sendMessage("§2Current Kills:§b "+record.kills);
         player.sendMessage("§2Current Deaths:§b "+record.deaths);
         player.sendMessage("§2Current KDR:§b "+record.kdr);
@@ -188,12 +201,19 @@ public class commandListener implements CommandExecutor {
      * @param name The name of the Record
      */
     public static void rank(Player player, String name) {
+        //Return if the Record does not exist
+        Record record = SaveSystem.findRecord(name);
+        if (record == null) {
+            player.sendMessage("No PvP Record found for "+name);
+            return;
+        }
+        
         int rank = 1;
-        double kdr = SaveSystem.findRecord(name).kdr;
+        double kdr = record.kdr;
         
         //Increase rank by one for each Record that has a higher kdr
-        for (Record record: SaveSystem.records)
-            if (record.kdr > kdr)
+        for (Record tempRecord: SaveSystem.records)
+            if (tempRecord.kdr > kdr)
                 rank++;
         
         player.sendMessage("§2Current Rank:§b "+rank);
@@ -210,6 +230,12 @@ public class commandListener implements CommandExecutor {
         
         //Sort the Records
         Collections.sort(SaveSystem.records);
+        
+        //Verify that amount is not too big
+        int size = SaveSystem.records.size();
+        if (amount > size)
+            amount = size;
+        
         Iterator itr = SaveSystem.records.iterator();
         Record record;
         
@@ -247,7 +273,13 @@ public class commandListener implements CommandExecutor {
                 if (name == null)
                     name = player.getName();
                 
+                //Return if the Record does not exist
                 Record record = SaveSystem.findRecord(name);
+                if (record == null) {
+                    player.sendMessage("No PvP Record found for "+name);
+                    return;
+                }
+                
                 record.kills = 0;
                 record.deaths = 0;
                 record.kdr = 0;
@@ -261,7 +293,13 @@ public class commandListener implements CommandExecutor {
                 if (name == null)
                     name = player.getName();
                 
+                //Return if the Record does not exist
                 Record record = SaveSystem.findRecord(name);
+                if (record == null) {
+                    player.sendMessage("No PvP Record found for "+name);
+                    return;
+                }
+                
                 record.karma = 0;
             }
         
@@ -273,7 +311,7 @@ public class commandListener implements CommandExecutor {
      *
      * @param player The Player needing help
      */
-    public static void resetHelp(Player player) {
+    public static void sendResetHelp(Player player) {
         player.sendMessage("§e  PvPReward Reset Help Page:");
         player.sendMessage("§2/pvp reset kdr (Player)§b Set kills and deaths to 0");
         player.sendMessage("§2/pvp reset kdr all§b Set everyone's kills and deaths to 0");

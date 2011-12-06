@@ -174,7 +174,7 @@ public class PvPReward extends JavaPlugin {
         cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 60000;
         Register.economy = loadValue("Economy");
         pluginListener.useBP = Boolean.parseBoolean(loadValue("UseBukkitPermissions"));
-        entityListener.rewardType = RewardType.valueOf(loadValue("RewardType"));
+        entityListener.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase());
         entityListener.percent = Integer.parseInt(loadValue("Percent"));
         entityListener.amount = Double.parseDouble(loadValue("Amount"));
         entityListener.hi = Integer.parseInt(loadValue("High"));
@@ -211,12 +211,12 @@ public class PvPReward extends JavaPlugin {
         entityListener entityListener = new entityListener();
         pm.registerEvent(Type.PLUGIN_ENABLE, new pluginListener(), Priority.Monitor, this);
         pm.registerEvent(Type.BLOCK_BREAK, new blockListener(), Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_JOIN, playerListener, Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_JOIN, playerListener, Priority.Monitor, this);
         pm.registerEvent(Type.PLAYER_TELEPORT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_QUIT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_INTERACT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.BLOCK_DAMAGE, entityListener, Priority.Normal, this);
-        pm.registerEvent(Type.ENTITY_DEATH, entityListener, Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_QUIT, playerListener, Priority.Monitor, this);
+        pm.registerEvent(Type.PLAYER_INTERACT, playerListener, Priority.Monitor, this);
+        pm.registerEvent(Type.ENTITY_DAMAGE, entityListener, Priority.Monitor, this);
+        pm.registerEvent(Type.ENTITY_DEATH, entityListener, Priority.Monitor, this);
     }
 
     /**

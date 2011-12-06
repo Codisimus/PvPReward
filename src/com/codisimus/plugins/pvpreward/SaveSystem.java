@@ -83,7 +83,7 @@ public class SaveSystem {
      * @param player The name of the Player
      * @return The Record of the Player
      */
-    public static Record findRecord(String player) {
+    public static Record getRecord(String player) {
         for(Record record: records)
             if (record.name.equals(player))
                 return record;
@@ -92,5 +92,20 @@ public class SaveSystem {
         Record newRecord = new Record(player);
         records.add(newRecord);
         return newRecord;
+    }
+
+    /**
+     * Returns the Record for the given Player
+     * 
+     * @param player The name of the Player
+     * @return The Record of the Player
+     */
+    public static Record findRecord(String player) {
+        for(Record record: records)
+            if (record.name.equals(player))
+                return record;
+
+        //Return null because the Player does not have a Record
+        return null;
     }
 }

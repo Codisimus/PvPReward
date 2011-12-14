@@ -3,7 +3,7 @@ package com.codisimus.plugins.pvpreward.listeners;
 import com.codisimus.plugins.pvpreward.PvPReward;
 import com.codisimus.plugins.pvpreward.Record;
 import com.codisimus.plugins.pvpreward.SaveSystem;
-import com.codisimus.plugins.pvpreward.listeners.entityListener.RewardType;
+import com.codisimus.plugins.pvpreward.listeners.EntityEventListener.RewardType;
 import java.util.Collections;
 import java.util.Iterator;
 import org.bukkit.command.Command;
@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
  * 
  * @author Codisimus
  */
-public class commandListener implements CommandExecutor {
+public class CommandListener implements CommandExecutor {
     public static enum Action { HELP, OUTLAWS, KARMA, KDR, RANK, TOP, RESET }
     
     /**
@@ -144,7 +144,7 @@ public class commandListener implements CommandExecutor {
         
         //Append the name of each Outlaw
         for (Record record: SaveSystem.records)
-            if (record.karma > entityListener.amount)
+            if (record.karma > EntityEventListener.amount)
                 outlaws.concat(record.name+", ");
         
         player.sendMessage(outlaws);
@@ -167,11 +167,11 @@ public class commandListener implements CommandExecutor {
         //Add '-' before the karma values if negative is set to true
         if (PvPReward.negative && record.karma != 0) {
             player.sendMessage("§2Current "+PvPReward.karmaName+" level:§b -"+record.karma);
-            player.sendMessage("§2"+PvPReward.outlawName+" status at §b-"+ (int)entityListener.amount);
+            player.sendMessage("§2"+PvPReward.outlawName+" status at §b-"+ (int)EntityEventListener.amount);
         }
         else {
             player.sendMessage("§2Current "+PvPReward.karmaName+" level:§b "+record.karma);
-            player.sendMessage("§2"+PvPReward.outlawName+" status at §b"+ (int)entityListener.amount);
+            player.sendMessage("§2"+PvPReward.outlawName+" status at §b"+ (int)EntityEventListener.amount);
         }
     }
     
@@ -317,7 +317,7 @@ public class commandListener implements CommandExecutor {
         player.sendMessage("§2/pvp reset kdr all§b Set everyone's kills and deaths to 0");
         
         //Only display karma commands if the reward type is set to karma
-        if (entityListener.rewardType.equals(RewardType.KARMA)) {
+        if (EntityEventListener.rewardType.equals(RewardType.KARMA)) {
             player.sendMessage("§2/pvp reset "+PvPReward.karmaName+" (Player)§b Set "+PvPReward.karmaName+" level to 0");
             player.sendMessage("§2/pvp reset "+PvPReward.karmaName+" all§b Set everyone's "+PvPReward.karmaName+" level to 0");
         }
@@ -332,14 +332,14 @@ public class commandListener implements CommandExecutor {
         player.sendMessage("§e  PvPReward Help Page:");
         
         //Only display karma commands if the reward type is set to karma
-        if (entityListener.rewardType.equals(RewardType.KARMA)) {
+        if (EntityEventListener.rewardType.equals(RewardType.KARMA)) {
             player.sendMessage("§2/pvp "+PvPReward.outlawName+"s§b List current "+PvPReward.outlawName+"s");
             player.sendMessage("§2/pvp "+PvPReward.karmaName+" (Player)§b List current "+PvPReward.karmaName+" level");
         }
         
         player.sendMessage("§2/pvp kdr (Player)§b List current KDR");
         player.sendMessage("§2/pvp rank (Player)§b List current rank");
-        player.sendMessage("§2/pvp top (amount)§b List top 5 KDRs");
+        player.sendMessage("§2/pvp top (amount)§b List top x KDRs");
         player.sendMessage("§2/pvp reset§b List Admin reset commands");
     }
 }

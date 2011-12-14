@@ -1,11 +1,10 @@
 package com.codisimus.plugins.pvpreward;
 
-import com.codisimus.plugins.pvpreward.listeners.pluginListener;
-import com.codisimus.plugins.pvpreward.listeners.entityListener;
-import com.codisimus.plugins.pvpreward.listeners.blockListener;
-import com.codisimus.plugins.pvpreward.listeners.commandListener;
-import com.codisimus.plugins.pvpreward.listeners.entityListener.RewardType;
-import com.codisimus.plugins.pvpreward.listeners.playerListener;
+import com.codisimus.plugins.pvpreward.listeners.EntityEventListener;
+import com.codisimus.plugins.pvpreward.listeners.BlockEventListener;
+import com.codisimus.plugins.pvpreward.listeners.CommandListener;
+import com.codisimus.plugins.pvpreward.listeners.EntityEventListener.RewardType;
+import com.codisimus.plugins.pvpreward.listeners.PlayerEventListener;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -16,13 +15,15 @@ import java.io.OutputStream;
 import java.util.Properties;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
+import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event.Priority;
 import org.bukkit.event.Event.Type;
 import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import ru.tehkode.permissions.PermissionManager;
 
 /**
  * Loads Plugin and manages Permissions
@@ -31,11 +32,12 @@ import ru.tehkode.permissions.PermissionManager;
  */
 public class PvPReward extends JavaPlugin {
     public static Server server;
-    public static PermissionManager permissions;
+    public static Permission permission;
     public static String karmaName;
     public static String outlawName;
     public static int cooldownTime;
     public static boolean negative;
+    public static boolean enabled = true;
     public static PluginManager pm;
     public Properties p;
 
@@ -45,13 +47,16 @@ public class PvPReward extends JavaPlugin {
      */
     @Override
     public void onDisable () {
-        if (!entityListener.digGraves)
+        if (!EntityEventListener.digGraves)
             return;
 
         for (Record record: SaveSystem.records)
             //Reset the Sign to AIR if there is one
             if (record.signLocation != null)
                 record.signLocation.getBlock().setTypeId(0);
+        
+        //Disable cooldown Thread
+        enabled = false;
     }
 
     /**
@@ -62,23 +67,42 @@ public class PvPReward extends JavaPlugin {
     public void onEnable () {
         server = getServer();
         pm = server.getPluginManager();
-        checkFiles();
+        
+        //Load Config settings
         loadConfig();
+        
+        //Find Permissions
+        RegisteredServiceProvider<Permission> permissionProvider =
+                getServer().getServicesManager().getRegistration(net.milkbowl.vault.permission.Permission.class);
+        if (permissionProvider != null)
+            permission = permissionProvider.getProvider();
+        
+        //Find Economy
+        RegisteredServiceProvider<Economy> economyProvider =
+                getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
+        if (economyProvider != null)
+            Econ.economy = economyProvider.getProvider();
+        
+        //Load Records Data
         SaveSystem.load();
-        registerEvents();
-        getCommand("pvp").setExecutor(new commandListener());
+        
+        //Register Events
+        PlayerEventListener playerListener = new PlayerEventListener();
+        EntityEventListener entityListener = new EntityEventListener();
+        pm.registerEvent(Type.BLOCK_BREAK, new BlockEventListener(), Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_JOIN, playerListener, Priority.Monitor, this);
+        pm.registerEvent(Type.PLAYER_TELEPORT, playerListener, Priority.Normal, this);
+        pm.registerEvent(Type.PLAYER_QUIT, playerListener, Priority.Monitor, this);
+        pm.registerEvent(Type.PLAYER_INTERACT, playerListener, Priority.Monitor, this);
+        pm.registerEvent(Type.ENTITY_DAMAGE, entityListener, Priority.Monitor, this);
+        pm.registerEvent(Type.ENTITY_DEATH, entityListener, Priority.Monitor, this);
+        getCommand("pvp").setExecutor(new CommandListener());
+        
         System.out.println("PvPReward "+this.getDescription().getVersion()+" is enabled!");
+        
+        //Start cooldown Thread if there is one
         if (cooldownTime != 0)
             cooldown();
-    }
-    
-    /**
-     * Makes sure all needed files exist
-     *
-     */
-    public void checkFiles() {
-        if (!new File("plugins/PvPReward/config.properties").exists())
-            moveFile("config.properties");
     }
     
     /**
@@ -127,63 +151,74 @@ public class PvPReward extends JavaPlugin {
     public void loadConfig() {
         p = new Properties();
         try {
-            p.load(new FileInputStream("plugins/PvPReward/config.properties"));
-        }
-        catch (Exception e) {
-        }
-        entityListener.deadedMessage = format(loadValue("KilledMessage"));
-        entityListener.killerMessage = format(loadValue("KillerMessage"));
-        entityListener.deadedNotEnoughMoneyMessage = format(loadValue("KilledNotEnoughMoney"));
-        entityListener.killerNotEnoughMoneyMessage = format(loadValue("KillerNotEnoughMoney"));
-        entityListener.outlawBroadcast = format(loadValue("OutlawBroadcast"));
-        entityListener.noLongerOutlawBroadcast = format(loadValue("NoLongerOutlawBroadcast"));
-        entityListener.karmaDecreasedMessage = format(loadValue("KarmaDecreased"));
-        entityListener.karmaIncreasedMessage = format(loadValue("KarmaIncreased"));
-        entityListener.karmaNoChangeMessage = format(loadValue("KarmaNoChange"));
-        
-        String tollType = loadValue("DeathTollType");
-        if (tollType.equalsIgnoreCase("none")) {
-            entityListener.tollAsPercent = false;
-            entityListener.tollAmount = 0;
-        }
-        else {
-            entityListener.deathTollMessage = format(loadValue("DeathTollMessage"));
-            entityListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
-            entityListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
+            //Copy the file from the jar if it is missing
+            if (!new File("plugins/PvPReward/config.properties").exists())
+                moveFile("config.properties");
             
-            if (tollType.equalsIgnoreCase("percent")) 
-                entityListener.tollAsPercent = true;
-            else if (tollType.equalsIgnoreCase("flatrate")) {
-                entityListener.tollAsPercent = false;
-                entityListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
-            } 
+            p.load(new FileInputStream("plugins/PvPReward/config.properties"));
+            
+            EntityEventListener.deadedMessage = format(loadValue("KilledMessage"));
+            EntityEventListener.killerMessage = format(loadValue("KillerMessage"));
+            EntityEventListener.deadedNotEnoughMoneyMessage = format(loadValue("KilledNotEnoughMoney"));
+            EntityEventListener.killerNotEnoughMoneyMessage = format(loadValue("KillerNotEnoughMoney"));
+            EntityEventListener.outlawBroadcast = format(loadValue("OutlawBroadcast"));
+            EntityEventListener.noLongerOutlawBroadcast = format(loadValue("NoLongerOutlawBroadcast"));
+            EntityEventListener.karmaDecreasedMessage = format(loadValue("KarmaDecreased"));
+            EntityEventListener.karmaIncreasedMessage = format(loadValue("KarmaIncreased"));
+            EntityEventListener.karmaNoChangeMessage = format(loadValue("KarmaNoChange"));
+
+            String tollType = loadValue("DeathTollType");
+            if (tollType.equalsIgnoreCase("none")) {
+                EntityEventListener.tollAsPercent = false;
+                EntityEventListener.tollAmount = 0;
+            }
+            else {
+                EntityEventListener.deathTollMessage = format(loadValue("DeathTollMessage"));
+                EntityEventListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
+                EntityEventListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
+
+                if (tollType.equalsIgnoreCase("percent")) 
+                    EntityEventListener.tollAsPercent = true;
+                else if (tollType.equalsIgnoreCase("flatrate")) {
+                    EntityEventListener.tollAsPercent = false;
+                    EntityEventListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
+                } 
+            }
+            
+            EntityEventListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
+            EntityEventListener.digGraves = Boolean.parseBoolean(loadValue("DigGraves"));
+
+            PlayerEventListener.denyTeleMessage = format(loadValue("DenyTeleMessage"));
+            PlayerEventListener.denyTele = Boolean.parseBoolean(loadValue("DenyTele"));
+            PlayerEventListener.telePenalty = Integer.parseInt(loadValue("TelePenalty"));
+            PlayerEventListener.penalizeLoggers = Boolean.parseBoolean(loadValue("PenalizeLoggers"));
+
+            Record.combatTimeOut = Integer.parseInt(loadValue("CombatTime")) * 1000;
+            Record.graveTimeOut = Integer.parseInt(loadValue("GraveTime")) * 1000;
+            Record.graveRob = format(loadValue("GraveRobMessage"));
+
+            EntityEventListener.outlawTag = format(loadValue("OutlawTag"));
+            karmaName = loadValue("KarmaName");
+            outlawName = loadValue("OutlawName");
+            cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 60000;
+
+            EntityEventListener.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase());
+            EntityEventListener.percent = Integer.parseInt(loadValue("Percent"));
+            EntityEventListener.amount = Double.parseDouble(loadValue("Amount"));
+            EntityEventListener.hi = Integer.parseInt(loadValue("High"));
+            EntityEventListener.lo = Integer.parseInt(loadValue("Low"));
+
+            EntityEventListener.threshold = Integer.parseInt(loadValue("KarmaThreshold"));
+            EntityEventListener.modifier = Integer.parseInt(loadValue("OutlawModifier")) / 100;
+            EntityEventListener.max = Integer.parseInt(loadValue("ModifierMax")) / 100;
+            EntityEventListener.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
+
+            PvPReward.negative = Boolean.parseBoolean(loadValue("Negative"));
         }
-        
-        entityListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
-        entityListener.digGraves = Boolean.parseBoolean(loadValue("DigGraves"));
-        playerListener.denyTeleMessage = format(loadValue("DenyTeleMessage"));
-        playerListener.denyTele = Boolean.parseBoolean(loadValue("DenyTele"));
-        playerListener.telePenalty = Integer.parseInt(loadValue("TelePenalty"));
-        playerListener.penalizeLoggers = Boolean.parseBoolean(loadValue("PenalizeLoggers"));
-        Record.combatTimeOut = Integer.parseInt(loadValue("CombatTime")) * 1000;
-        Record.graveTimeOut = Integer.parseInt(loadValue("GraveTime")) * 1000;
-        Record.graveRob = format(loadValue("GraveRobMessage"));
-        entityListener.outlawTag = format(loadValue("OutlawTag"));
-        karmaName = loadValue("KarmaName");
-        outlawName = loadValue("OutlawName");
-        cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 60000;
-        Register.economy = loadValue("Economy");
-        pluginListener.useBP = Boolean.parseBoolean(loadValue("UseBukkitPermissions"));
-        entityListener.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase());
-        entityListener.percent = Integer.parseInt(loadValue("Percent"));
-        entityListener.amount = Double.parseDouble(loadValue("Amount"));
-        entityListener.hi = Integer.parseInt(loadValue("High"));
-        entityListener.lo = Integer.parseInt(loadValue("Low"));
-        entityListener.threshold = Integer.parseInt(loadValue("KarmaThreshold"));
-        entityListener.modifier = Integer.parseInt(loadValue("OutlawModifier")) / 100;
-        entityListener.max = Integer.parseInt(loadValue("ModifierMax")) / 100;
-        entityListener.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
-        PvPReward.negative = Boolean.parseBoolean(loadValue("Negative"));
+        catch (Exception missingProp) {
+            System.err.println("Failed to load PvPReward "+this.getDescription().getVersion());
+            missingProp.printStackTrace();
+        }
     }
 
     /**
@@ -201,23 +236,6 @@ public class PvPReward extends JavaPlugin {
 
         return p.getProperty(key);
     }
-    
-    /**
-     * Registers events for the PvPReward Plugin
-     *
-     */
-    public void registerEvents() {
-        playerListener playerListener = new playerListener();
-        entityListener entityListener = new entityListener();
-        pm.registerEvent(Type.PLUGIN_ENABLE, new pluginListener(), Priority.Monitor, this);
-        pm.registerEvent(Type.BLOCK_BREAK, new blockListener(), Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_JOIN, playerListener, Priority.Monitor, this);
-        pm.registerEvent(Type.PLAYER_TELEPORT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_QUIT, playerListener, Priority.Monitor, this);
-        pm.registerEvent(Type.PLAYER_INTERACT, playerListener, Priority.Monitor, this);
-        pm.registerEvent(Type.ENTITY_DAMAGE, entityListener, Priority.Monitor, this);
-        pm.registerEvent(Type.ENTITY_DEATH, entityListener, Priority.Monitor, this);
-    }
 
     /**
      * Returns false if either Player does not have proper permission
@@ -229,11 +247,7 @@ public class PvPReward extends JavaPlugin {
      * @return true both Players have proper permission
      */
     public static boolean hasPermisson(Player killer, Player deaded) {
-        //Check if a Permission Plugin is present
-        if (permissions != null)
-            return permissions.has(killer, "pvpreward.getreward") && permissions.has(deaded, "pvpreward.givereward");
-
-        return true;
+        return permission.has(killer, "pvpreward.getreward") && permission.has(deaded, "pvpreward.givereward");
     }
     
     /**
@@ -244,12 +258,7 @@ public class PvPReward extends JavaPlugin {
      * @return true if either Player does not have proper permission
      */
     public static boolean hasPermisson(Player player, String node) {
-        //Check if a Permission Plugin is present
-        if (permissions != null)
-            return permissions.has(player, "pvpreward."+node);
-
-        //Return Bukkit Permission value
-        return player.hasPermission("pvpreward."+node);
+        return permission.has(player, "pvpreward."+node);
     }
     
     /**
@@ -262,7 +271,7 @@ public class PvPReward extends JavaPlugin {
             @Override
             public void run() {
                 try {
-                    while (true) {
+                    while (enabled) {
                         Thread.currentThread().sleep(cooldownTime);
                         
                         for (Record record: SaveSystem.records) {
@@ -271,11 +280,11 @@ public class PvPReward extends JavaPlugin {
                             if (player != null) {
                                 record.karma--;
                                 
-                                if (record.karma == entityListener.amount) {
+                                if (record.karma == EntityEventListener.amount) {
                                     player.setDisplayName(player.getName());
                                     
-                                    PvPReward.server.broadcastMessage(entityListener.getMsg(
-                                            entityListener.noLongerOutlawBroadcast,
+                                    PvPReward.server.broadcastMessage(EntityEventListener.getMsg(
+                                            EntityEventListener.noLongerOutlawBroadcast,
                                             1, player.getName(), "", record.karma+""));
                                 }
                                 

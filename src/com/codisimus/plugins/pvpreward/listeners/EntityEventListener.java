@@ -3,7 +3,7 @@ package com.codisimus.plugins.pvpreward.listeners;
 import com.codisimus.plugins.pvpreward.Econ;
 import com.codisimus.plugins.pvpreward.PvPReward;
 import com.codisimus.plugins.pvpreward.Record;
-import com.codisimus.plugins.pvpreward.SaveSystem;
+import java.util.LinkedList;
 import java.util.Random;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -21,18 +21,18 @@ public class EntityEventListener extends EntityListener {
     public static enum RewardType {
         KARMA, FLAT_RATE, PERCENT_KDR, PERCENT, PERCENT_RANGE, RANGE
     }
-    public static String deadedMessage;
-    public static String killerMessage;
-    public static String deadedNotEnoughMoneyMessage;
-    public static String killerNotEnoughMoneyMessage;
+    public static String deadedMsg;
+    public static String killerMsg;
+    public static String deadedNotEnoughMoneyMsg;
+    public static String killerNotEnoughMoneyMsg;
     public static String outlawTag;
     public static String outlawBroadcast;
     public static String noLongerOutlawBroadcast;
-    public static String karmaDecreasedMessage;
-    public static String karmaIncreasedMessage;
-    public static String karmaNoChangeMessage;
+    public static String karmaDecreasedMsg;
+    public static String karmaIncreasedMsg;
+    public static String karmaNoChangeMsg;
     public static boolean tollAsPercent;
-    public static String deathTollMessage;
+    public static String deathTollMsg;
     public static double tollAmount;
     public static boolean disableTollForPvP;
     public static boolean digGraves;
@@ -45,6 +45,10 @@ public class EntityEventListener extends EntityListener {
     public static int hi;
     public static int lo;
     public static boolean whole;
+    public static LinkedList<String> tollDisabledIn;
+    public static LinkedList<String> rewardDisabledIn;
+    public static String outlawGroup;
+    public static String normalGroup;
 
     /**
      * Flags Records as inCombat when the Player is attacked by another Player
@@ -71,7 +75,7 @@ public class EntityEventListener extends EntityListener {
         if (attacker.equals(wounded))
             return;
 
-        Record record = SaveSystem.getRecord(((Player)wounded).getName());
+        Record record = PvPReward.getRecord(((Player)wounded).getName());
         record.startCombat(((Player)attacker).getName());
     }
 
@@ -88,7 +92,7 @@ public class EntityEventListener extends EntityListener {
             return;
 
         Player deaded = (Player)event.getEntity();
-        Record record = SaveSystem.getRecord(deaded.getName());
+        Record record = PvPReward.getRecord(deaded.getName());
 
         //Dig a grave for the killed Player if the option is enabled
         if (digGraves)
@@ -104,7 +108,9 @@ public class EntityEventListener extends EntityListener {
         if (!disableTollForPvP)
             dropMoney(deaded);
 
-        rewardPvP(deaded, record);
+        //Reward the PvP if it is not disabled in this world
+        if (!rewardDisabledIn.contains(deaded.getWorld().getName()))
+            rewardPvP(deaded, record);
     }
     
     /**
@@ -115,6 +121,10 @@ public class EntityEventListener extends EntityListener {
     public static void dropMoney(Player deaded) {
         //Cancel if there is no toll
         if (tollAmount == 0)
+            return;
+        
+        //Cancel if the toll is disabled in this World
+        if (tollDisabledIn.contains(deaded.getWorld().getName()))
             return;
 
         //Cancel if the Player is allowed to ignore the toll
@@ -134,7 +144,7 @@ public class EntityEventListener extends EntityListener {
             return;
 
         Econ.takeMoney(deaded.getName(), dropped);
-        deaded.sendMessage(getMsg(deathTollMessage, dropped, "", "", ""));
+        deaded.sendMessage(getMsg(deathTollMsg, dropped, "", "", ""));
     }
 
     /**
@@ -155,7 +165,7 @@ public class EntityEventListener extends EntityListener {
         if (!PvPReward.hasPermisson(killer, deaded))
             return;
 
-        Record killerRecord = SaveSystem.getRecord(killer.getName());
+        Record killerRecord = PvPReward.getRecord(killer.getName());
         double deadedKDR = deadedRecord.addDeath();
         double killerKDR = killerRecord.addKill();
         Random random = new Random();
@@ -179,10 +189,16 @@ public class EntityEventListener extends EntityListener {
 
             case KARMA:
                 if (deaded.isOnline())
-                    deaded.sendMessage(getMsg(karmaDecreasedMessage, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
+                    deaded.sendMessage(getMsg(karmaDecreasedMsg, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
                 
                 //Check if the killed Player is no longer an Outlaw
                 if (deadedRecord.karma == amount) {
+                    //Add the Player to the Normal group if there is one
+                    if (!normalGroup.equals("")) {
+                        PvPReward.permission.playerRemoveGroup(killer, outlawGroup);
+                        PvPReward.permission.playerAddGroup(killer, normalGroup);
+                    }
+                    
                     if (deaded.isOnline())
                         deaded.setDisplayName(deadedRecord.name);
                     PvPReward.server.broadcastMessage(getMsg(noLongerOutlawBroadcast, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
@@ -196,16 +212,20 @@ public class EntityEventListener extends EntityListener {
                     
                     //Take back karma that should not have been added because the Player killed an Outlaw
                     killerRecord.karma = killerRecord.karma - 2;
-                    SaveSystem.save();
-                    killer.sendMessage(getMsg(karmaNoChangeMessage, 0, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
+                    PvPReward.save();
+                    killer.sendMessage(getMsg(karmaNoChangeMsg, 0, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                 }
                 else {
                     //Chance of theft is determined by the killed Players karma
                     percentOfSteal = (int)percent + deadedRecord.karma;
-                    killer.sendMessage(getMsg(karmaIncreasedMessage, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
+                    killer.sendMessage(getMsg(karmaIncreasedMsg, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                     
                     //Check if the killer is now an Outlaw
                     if (killerRecord.karma == amount + 1 || killerRecord.karma == amount + 2) {
+                        //Add the Player to the Outlaw group if there is one
+                        if (!outlawGroup.equals(""))
+                            PvPReward.permission.playerAddGroup(killer, outlawGroup);
+                        
                         killer.setDisplayName(outlawTag+killerRecord.name);
                         PvPReward.server.broadcastMessage(getMsg(outlawBroadcast, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                     }
@@ -247,15 +267,15 @@ public class EntityEventListener extends EntityListener {
         //Cancel if the killed Player has insufficient funds
         if (!Econ.takeMoney(deaded.getName(), reward)) {
             if (deaded.isOnline())
-                deaded.sendMessage(getMsg(deadedNotEnoughMoneyMessage, reward, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
-            killer.sendMessage(getMsg(killerNotEnoughMoneyMessage, reward, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
+                deaded.sendMessage(getMsg(deadedNotEnoughMoneyMsg, reward, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
+            killer.sendMessage(getMsg(killerNotEnoughMoneyMsg, reward, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
             return;
         }
 
         Econ.giveMoney(killer.getName(), reward);
         if (deaded.isOnline())
-            deaded.sendMessage(getMsg(deadedMessage, reward, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
-        killer.sendMessage(getMsg(killerMessage, reward, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
+            deaded.sendMessage(getMsg(deadedMsg, reward, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
+        killer.sendMessage(getMsg(killerMsg, reward, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
     }
     
     /**

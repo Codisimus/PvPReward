@@ -31,7 +31,7 @@ public class Record implements Comparable {
     public Location signLocation;
     public Sign tombstone;
     public LinkedList<ItemStack> grave = new LinkedList<ItemStack>();
-    public int instance = 0;
+    private int instance = 0;
 
     /**
      * Constructs a new Record for the given Player
@@ -63,7 +63,7 @@ public class Record implements Comparable {
         else
             kdr = (double)kills / deaths;
         
-        long temp =(long)(kdr * 100);
+        long temp = (long)(kdr * 100);
         kdr = (double)temp / 100;
     }
     
@@ -79,12 +79,12 @@ public class Record implements Comparable {
         if (deaths == 0)
             kdr = kills;
         else
-            kdr = (double)kills/deaths;
+            kdr = (double)kills / deaths;
         
-        long temp =(long)(kdr*100);
-        kdr = (double)temp/100;
+        long temp = (long)(kdr * 100);
+        kdr = (double)temp / 100;
         
-        SaveSystem.save();
+        PvPReward.save();
         return kdr;
     }
 
@@ -101,14 +101,14 @@ public class Record implements Comparable {
             karma = 0;
         
         if (kills == 0)
-            kdr = 1/deaths;
+            kdr = 1 / deaths;
         else
-            kdr = (double)kills/deaths;
+            kdr = (double)kills / deaths;
         
-        long temp =(long)(kdr*100);
-        kdr = (double)temp/100;
+        long temp = (long)(kdr * 100);
+        kdr = (double)temp / 100;
         
-        SaveSystem.save();
+        PvPReward.save();
         return kdr;
     }
 

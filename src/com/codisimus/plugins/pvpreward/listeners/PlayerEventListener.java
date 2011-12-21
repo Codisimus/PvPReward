@@ -2,7 +2,6 @@ package com.codisimus.plugins.pvpreward.listeners;
 
 import com.codisimus.plugins.pvpreward.PvPReward;
 import com.codisimus.plugins.pvpreward.Record;
-import com.codisimus.plugins.pvpreward.SaveSystem;
 import com.codisimus.plugins.pvpreward.listeners.EntityEventListener.RewardType;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -21,7 +20,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
  * @author Codisimus
  */
 public class PlayerEventListener extends PlayerListener {
-    public static String denyTeleMessage;
+    public static String denyTeleMsg;
     public static int telePenalty;
     public static boolean denyTele;
     public static boolean penalizeLoggers;
@@ -38,7 +37,7 @@ public class PlayerEventListener extends PlayerListener {
             return;
 
         Player player = event.getPlayer();
-        Record record = SaveSystem.getRecord(player.getName());
+        Record record = PvPReward.getRecord(player.getName());
 
         //Changes the Player's display name if they are an Outlaw
         if (record.karma > EntityEventListener.amount)
@@ -57,14 +56,14 @@ public class PlayerEventListener extends PlayerListener {
             return;
 
         Player player = event.getPlayer();
-        Record record = SaveSystem.getRecord(player.getName());
+        Record record = PvPReward.getRecord(player.getName());
 
         //Return if the Player is not in combat
         if (!record.inCombat)
             return;
 
         //Cancel the event and inflict damage on the Player
-        player.sendMessage(denyTeleMessage);
+        player.sendMessage(denyTeleMsg);
         event.setCancelled(true);
         player.damage(telePenalty);
         return;
@@ -82,7 +81,7 @@ public class PlayerEventListener extends PlayerListener {
             return;
 
         Player player = event.getPlayer();
-        Record record = SaveSystem.getRecord(player.getName());
+        Record record = PvPReward.getRecord(player.getName());
 
         //Check if the Player is in combat
         if (record.inCombat)
@@ -115,7 +114,7 @@ public class PlayerEventListener extends PlayerListener {
         if (!player.getName().equals(name))
             return;
 
-        Record record = SaveSystem.getRecord(name);
+        Record record = PvPReward.getRecord(name);
 
         //Return if the Player does not have a recent grave
         if (record == null || record.signLocation == null)

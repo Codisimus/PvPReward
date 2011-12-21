@@ -1,7 +1,7 @@
 package com.codisimus.plugins.pvpreward.listeners;
 
+import com.codisimus.plugins.pvpreward.PvPReward;
 import com.codisimus.plugins.pvpreward.Record;
-import com.codisimus.plugins.pvpreward.SaveSystem;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -24,7 +24,7 @@ public class BlockEventListener extends BlockListener {
 
         Sign sign = (Sign)block;
 
-        for (Record record: SaveSystem.records)
+        for (Record record: PvPReward.records)
             if (record.tombstone.equals(sign)) {
                 event.setCancelled(true);
                 break;

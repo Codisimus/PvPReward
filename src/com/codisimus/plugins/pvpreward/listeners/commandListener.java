@@ -2,7 +2,6 @@ package com.codisimus.plugins.pvpreward.listeners;
 
 import com.codisimus.plugins.pvpreward.PvPReward;
 import com.codisimus.plugins.pvpreward.Record;
-import com.codisimus.plugins.pvpreward.SaveSystem;
 import com.codisimus.plugins.pvpreward.listeners.EntityEventListener.RewardType;
 import java.util.Collections;
 import java.util.Iterator;
@@ -17,7 +16,7 @@ import org.bukkit.entity.Player;
  * @author Codisimus
  */
 public class CommandListener implements CommandExecutor {
-    public static enum Action { HELP, OUTLAWS, KARMA, KDR, RANK, TOP, RESET }
+    private static enum Action { HELP, OUTLAWS, KARMA, KDR, RANK, TOP, RESET }
     
     /**
      * Listens for PvPReward commands to execute them
@@ -139,11 +138,11 @@ public class CommandListener implements CommandExecutor {
      *
      * @param player The Player executing the command
      */
-    public static void outlaws(Player player) {
+    private static void outlaws(Player player) {
         String outlaws = "§eCurrent "+PvPReward.outlawName+"s:§2  ";
         
         //Append the name of each Outlaw
-        for (Record record: SaveSystem.records)
+        for (Record record: PvPReward.records)
             if (record.karma > EntityEventListener.amount)
                 outlaws.concat(record.name+", ");
         
@@ -156,9 +155,9 @@ public class CommandListener implements CommandExecutor {
      * @param player The Player executing the command
      * @param name The name of the Record
      */
-    public static void karma(Player player, String name) {
+    private static void karma(Player player, String name) {
         //Return if the Record does not exist
-        Record record = SaveSystem.findRecord(name);
+        Record record = PvPReward.findRecord(name);
         if (record == null) {
             player.sendMessage("No PvP Record found for "+name);
             return;
@@ -181,9 +180,9 @@ public class CommandListener implements CommandExecutor {
      * @param player The Player executing the command
      * @param name The name of the Record
      */
-    public static void kdr(Player player, String name) {
+    private static void kdr(Player player, String name) {
         //Return if the Record does not exist
-        Record record = SaveSystem.findRecord(name);
+        Record record = PvPReward.findRecord(name);
         if (record == null) {
             player.sendMessage("No PvP Record found for "+name);
             return;
@@ -200,9 +199,9 @@ public class CommandListener implements CommandExecutor {
      * @param player The Player executing the command
      * @param name The name of the Record
      */
-    public static void rank(Player player, String name) {
+    private static void rank(Player player, String name) {
         //Return if the Record does not exist
-        Record record = SaveSystem.findRecord(name);
+        Record record = PvPReward.findRecord(name);
         if (record == null) {
             player.sendMessage("No PvP Record found for "+name);
             return;
@@ -212,7 +211,7 @@ public class CommandListener implements CommandExecutor {
         double kdr = record.kdr;
         
         //Increase rank by one for each Record that has a higher kdr
-        for (Record tempRecord: SaveSystem.records)
+        for (Record tempRecord: PvPReward.records)
             if (tempRecord.kdr > kdr)
                 rank++;
         
@@ -225,18 +224,18 @@ public class CommandListener implements CommandExecutor {
      * @param player The Player executing the command
      * @param amount The amount of KDRs to be displayed
      */
-    public static void top(Player player, int amount) {
+    private static void top(Player player, int amount) {
         player.sendMessage("§eKDR Leaderboard:");
         
         //Sort the Records
-        Collections.sort(SaveSystem.records);
+        Collections.sort(PvPReward.records);
         
         //Verify that amount is not too big
-        int size = SaveSystem.records.size();
+        int size = PvPReward.records.size();
         if (amount > size)
             amount = size;
         
-        Iterator itr = SaveSystem.records.iterator();
+        Iterator itr = PvPReward.records.iterator();
         Record record;
         
         //Display the name and KDR of the first x Records
@@ -254,7 +253,7 @@ public class CommandListener implements CommandExecutor {
      * @param name The name of the Record, 'all' to specify all Records,
      *          or null to specify the record of the given player
      */
-    public static void reset(Player player, boolean kdr, String name) {
+    private static void reset(Player player, boolean kdr, String name) {
         //Cancel if the Player does not have the proper permissions
         if (!PvPReward.hasPermisson(player, "reset")) {
             player.sendMessage("You do not have permission to do that.");
@@ -263,7 +262,7 @@ public class CommandListener implements CommandExecutor {
         
         if (kdr) //Reset kdr
             if (name.equals("all")) //Reset all Records
-                for (Record record: SaveSystem.records) {
+                for (Record record: PvPReward.records) {
                     record.kills = 0;
                     record.deaths = 0;
                     record.kdr = 0;
@@ -274,7 +273,7 @@ public class CommandListener implements CommandExecutor {
                     name = player.getName();
                 
                 //Return if the Record does not exist
-                Record record = SaveSystem.findRecord(name);
+                Record record = PvPReward.findRecord(name);
                 if (record == null) {
                     player.sendMessage("No PvP Record found for "+name);
                     return;
@@ -286,7 +285,7 @@ public class CommandListener implements CommandExecutor {
             }
         else //Reset karma
             if (name.equals("all")) //Reset all Records
-                for (Record record: SaveSystem.records)
+                for (Record record: PvPReward.records)
                     record.karma = 0;
             else { //Reset a specified Record
                 //Use the Record of the given Player if name is null
@@ -294,7 +293,7 @@ public class CommandListener implements CommandExecutor {
                     name = player.getName();
                 
                 //Return if the Record does not exist
-                Record record = SaveSystem.findRecord(name);
+                Record record = PvPReward.findRecord(name);
                 if (record == null) {
                     player.sendMessage("No PvP Record found for "+name);
                     return;
@@ -303,7 +302,7 @@ public class CommandListener implements CommandExecutor {
                 record.karma = 0;
             }
         
-        SaveSystem.save();
+        PvPReward.save();
     }
     
     /**
@@ -311,7 +310,7 @@ public class CommandListener implements CommandExecutor {
      *
      * @param player The Player needing help
      */
-    public static void sendResetHelp(Player player) {
+    private static void sendResetHelp(Player player) {
         player.sendMessage("§e  PvPReward Reset Help Page:");
         player.sendMessage("§2/pvp reset kdr (Player)§b Set kills and deaths to 0");
         player.sendMessage("§2/pvp reset kdr all§b Set everyone's kills and deaths to 0");
@@ -328,7 +327,7 @@ public class CommandListener implements CommandExecutor {
      *
      * @param player The Player needing help
      */
-    public static void sendHelp(Player player) {
+    private static void sendHelp(Player player) {
         player.sendMessage("§e  PvPReward Help Page:");
         
         //Only display karma commands if the reward type is set to karma

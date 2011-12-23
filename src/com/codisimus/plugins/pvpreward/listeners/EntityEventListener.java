@@ -194,12 +194,12 @@ public class EntityEventListener extends EntityListener {
                 //Check if the killed Player is no longer an Outlaw
                 if (deadedRecord.karma == amount) {
                     //Add the Player to the Normal group if there is one
-                    if (!normalGroup.equals("")) {
+                    if (!normalGroup.isEmpty()) {
                         PvPReward.permission.playerRemoveGroup(killer, outlawGroup);
                         PvPReward.permission.playerAddGroup(killer, normalGroup);
                     }
                     
-                    if (deaded.isOnline())
+                    if (!EntityEventListener.outlawTag.isEmpty() && deaded.isOnline())
                         deaded.setDisplayName(deadedRecord.name);
                     PvPReward.server.broadcastMessage(getMsg(noLongerOutlawBroadcast, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
                 }
@@ -221,9 +221,9 @@ public class EntityEventListener extends EntityListener {
                     killer.sendMessage(getMsg(karmaIncreasedMsg, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                     
                     //Check if the killer is now an Outlaw
-                    if (killerRecord.karma == amount + 1 || killerRecord.karma == amount + 2) {
+                    if ((killerRecord.karma == amount + 1 || killerRecord.karma == amount + 2)  && !EntityEventListener.outlawTag.isEmpty()) {
                         //Add the Player to the Outlaw group if there is one
-                        if (!outlawGroup.equals(""))
+                        if (!outlawGroup.isEmpty())
                             PvPReward.permission.playerAddGroup(killer, outlawGroup);
                         
                         killer.setDisplayName(outlawTag+killerRecord.name);

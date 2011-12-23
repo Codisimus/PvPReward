@@ -40,8 +40,8 @@ public class PlayerEventListener extends PlayerListener {
         Record record = PvPReward.getRecord(player.getName());
 
         //Changes the Player's display name if they are an Outlaw
-        if (record.karma > EntityEventListener.amount)
-            player.setDisplayName(PvPReward.outlawName+player.getName());
+        if (record.karma > EntityEventListener.amount && !EntityEventListener.outlawTag.isEmpty())
+            player.setDisplayName(EntityEventListener.outlawTag+record.name);
     }
 
     /**

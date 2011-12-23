@@ -288,15 +288,15 @@ public class EntityEventListener extends EntityListener {
      * @return The modified message
      */
     public static String getMsg(String msg, double amount, String killed, String killer, String karma) {
-        msg = msg.replaceAll("<killed>", killed).replaceAll("<killer>", killer);
+        msg = msg.replace("<killed>", killed).replace("<killer>", killer);
         
         //Add '-' before karma values if negative is set to true
         if (PvPReward.negative && !karma.equals("0"))
-            msg = msg.replaceAll("<karma>", "-"+karma);
+            msg = msg.replace("<karma>", "-"+karma);
         else
-            msg = msg.replaceAll("<karma>", karma);
+            msg = msg.replace("<karma>", karma);
         
-        return msg.replaceAll("<amount>", Econ.format(amount));
+        return msg.replace("<amount>", Econ.format(amount));
     }
     
     /**

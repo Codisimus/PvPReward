@@ -218,7 +218,7 @@ public class Record implements Comparable {
      * Compares the KDRs of this Record and the given Record
      * 
      * @param obj The Record being compared to this one
-     * @return -1, 0, or 1 if this Record's KDR is less, equal or greater respectively
+     * @return 1, 0, or -1 if this Record's KDR is less, equal or greater respectively
      */
     @Override
     public int compareTo(Object obj) {
@@ -226,9 +226,9 @@ public class Record implements Comparable {
         double objKDR = ((Record)obj).kdr;
         
         if (kdr < objKDR)
-            return -1;
-        else if (kdr > objKDR)
             return 1;
+        else if (kdr > objKDR)
+            return -1;
         else
             return 0;
     }

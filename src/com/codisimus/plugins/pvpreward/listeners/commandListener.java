@@ -144,9 +144,9 @@ public class CommandListener implements CommandExecutor {
         //Append the name of each Outlaw
         for (Record record: PvPReward.records)
             if (record.karma > EntityEventListener.amount)
-                outlaws.concat(record.name+", ");
+                outlaws = outlaws.concat(record.name+", ");
         
-        player.sendMessage(outlaws);
+        player.sendMessage(outlaws.substring(0, outlaws.length() - 2));
     }
     
     /**

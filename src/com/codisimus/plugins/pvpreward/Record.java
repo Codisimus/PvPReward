@@ -36,6 +36,7 @@ public class Record implements Comparable {
     public LinkedList<ItemStack> grave = new LinkedList<ItemStack>();
     private int instance = 0;
     public String group;
+    public static boolean removeGroup;
 
     /**
      * Constructs a new Record for the given Player
@@ -114,9 +115,11 @@ public class Record implements Comparable {
         
         //Add the Player to the Outlaw group if there is one
         if (!outlawGroup.isEmpty()) {
-            //Remove the Player from their primary group
-            group = PvPReward.permission.getPrimaryGroup(player);
-            PvPReward.permission.playerRemoveGroup(player, group);
+            if (removeGroup) {
+                //Remove the Player from their primary group
+                group = PvPReward.permission.getPrimaryGroup(player);
+                PvPReward.permission.playerRemoveGroup(player, group);
+            }
 
             //Add the Player to the Outlaw group
             PvPReward.permission.playerAddGroup(player, outlawGroup);
@@ -153,7 +156,7 @@ public class Record implements Comparable {
         if (PvPReward.permission.playerInGroup(player, outlawGroup)) {
             PvPReward.permission.playerRemoveGroup(player, outlawGroup);
             
-            if (group != null) {
+            if (group != null && removeGroup) {
                 PvPReward.permission.playerAddGroup(player, group);
                 group = null;
             }

@@ -221,6 +221,7 @@ public class PvPReward extends JavaPlugin {
                     (Arrays.asList(loadValue("DisableRewardInWorlds").split(", ")));
             
             Record.outlawGroup = loadValue("OutlawGroup");
+            Record.removeGroup = Boolean.parseBoolean(loadValue("RemoveFromCurrentGroup"));
             
             fis.close();
         }

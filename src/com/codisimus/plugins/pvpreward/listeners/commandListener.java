@@ -143,7 +143,7 @@ public class CommandListener implements CommandExecutor {
         
         //Append the name of each Outlaw
         for (Record record: PvPReward.records)
-            if (record.karma > EntityEventListener.amount)
+            if (record.isOutlaw())
                 outlaws = outlaws.concat(record.name+", ");
         
         player.sendMessage(outlaws.substring(0, outlaws.length() - 2));
@@ -166,11 +166,11 @@ public class CommandListener implements CommandExecutor {
         //Add '-' before the karma values if negative is set to true
         if (PvPReward.negative && record.karma != 0) {
             player.sendMessage("§2Current "+PvPReward.karmaName+" level:§b -"+record.karma);
-            player.sendMessage("§2"+PvPReward.outlawName+" status at §b-"+ (int)EntityEventListener.amount);
+            player.sendMessage("§2"+PvPReward.outlawName+" status at §b-"+Record.outlawLevel);
         }
         else {
             player.sendMessage("§2Current "+PvPReward.karmaName+" level:§b "+record.karma);
-            player.sendMessage("§2"+PvPReward.outlawName+" status at §b"+ (int)EntityEventListener.amount);
+            player.sendMessage("§2"+PvPReward.outlawName+" status at §b"+Record.outlawLevel);
         }
     }
     

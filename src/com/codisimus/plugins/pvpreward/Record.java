@@ -21,17 +21,21 @@ public class Record implements Comparable {
     public static int combatTimeOut;
     public static int graveTimeOut;
     public static String graveRob;
+    public static int outlawLevel;
+    public static String outlawTag;
+    public static String outlawGroup;
     public String name;
     public int kills = 0;
     public int deaths = 0;
-    public int karma = 0;
     public double kdr = 0;
+    public int karma = 0;
     public boolean inCombat = false;
     public String inCombatWith;
     public Location signLocation;
     public Sign tombstone;
     public LinkedList<ItemStack> grave = new LinkedList<ItemStack>();
     private int instance = 0;
+    public String group;
 
     /**
      * Constructs a new Record for the given Player
@@ -58,58 +62,117 @@ public class Record implements Comparable {
         this.deaths = deaths;
         this.karma = karma;
         
-        if (deaths == 0)
-            kdr = kills;
-        else
-            kdr = (double)kills / deaths;
+        calculateKDR();
+    }
+    
+    /**
+     * Increments kills by one and recalculates kdr
+     * 
+     */
+    public void incrementKills() {
+        kills++;
+        calculateKDR();
+    }
+
+    /**
+     * Decrements kills by one and recalculates kdr
+     * 
+     */
+    public void incrementDeaths() {
+        deaths++;
+        calculateKDR();
+    }
+    
+    /**
+     * Calculates the Kill/Death Ratio
+     * If the record has no deaths, deaths is assumed to be 1
+     */
+    private void calculateKDR() {
+        //Caculate the new KDR
+        kdr = deaths == 0 ? kills : (double)kills / deaths;
         
+        //Remove all but two decimal places
         long temp = (long)(kdr * 100);
         kdr = (double)temp / 100;
     }
     
     /**
-     * Adds a kill to the Record and 2 karma points
+     * Increments karma by two and checks if the Player is now an outlaw
      * 
-     * @return The new kdr
+     * @return true if the Player is now an Outlaw
      */
-    public double addKill() {
-        kills++;
+    public boolean incrementKarma(Player player) {
+        //Karma does not change if the Player is offline (they logged during battle)
+        if (!player.isOnline())
+            return false;
+        
         karma = karma + 2;
         
-        if (deaths == 0)
-            kdr = kills;
-        else
-            kdr = (double)kills / deaths;
+        //Return false if the Player's Outlaw status did not change
+        if (karma != outlawLevel + 1 && karma != outlawLevel + 2)
+            return false;
         
-        long temp = (long)(kdr * 100);
-        kdr = (double)temp / 100;
-        
-        PvPReward.save();
-        return kdr;
-    }
+        //Add the Player to the Outlaw group if there is one
+        if (!outlawGroup.isEmpty()) {
+            //Remove the Player from their primary group
+            group = PvPReward.permission.getPrimaryGroup(player);
+            PvPReward.permission.playerRemoveGroup(player, group);
 
+            //Add the Player to the Outlaw group
+            PvPReward.permission.playerAddGroup(player, outlawGroup);
+        }
+
+        //Set the Outlaw tag if there is one
+        if (!outlawTag.isEmpty())
+            player.setDisplayName(outlawTag+name);
+        
+        return true;
+    }
+    
     /**
-     * Adds a death to the Record and subtracts a karma point
+     * Decrements karma by one and checks if the Player is no longer an outlaw
      * 
-     * @return The new kdr
+     * @return true if the Player is no longer an Outlaw
      */
-    public double addDeath() {
-        deaths++;
+    public boolean decrementKarma(Player player) {
+        //Karma does not change if the Player is offline (they logged during battle)
+        if (!player.isOnline())
+            return false;
+        
         karma--;
         
+        //Do not let karma be negative
         if (karma < 0)
             karma = 0;
         
-        if (kills == 0)
-            kdr = 1 / deaths;
-        else
-            kdr = (double)kills / deaths;
+        //Return false if the Player's Outlaw status did not change
+        if (karma != outlawLevel)
+            return false;
         
-        long temp = (long)(kdr * 100);
-        kdr = (double)temp / 100;
+        //Move the Player to their previous group if they are in the Outlaw group
+        if (PvPReward.permission.playerInGroup(player, outlawGroup)) {
+            PvPReward.permission.playerRemoveGroup(player, outlawGroup);
+            
+            if (group != null) {
+                PvPReward.permission.playerAddGroup(player, group);
+                group = null;
+            }
+        }
+
+        //Remove the Outlaw tag if being used
+        if (!outlawTag.isEmpty())
+            player.setDisplayName(name);
         
-        PvPReward.save();
-        return kdr;
+        return true;
+    }
+    
+    /**
+     * Returns true if the Record is at Outlaw status
+     * 
+     * @return true if the Record is at Outlaw status
+     */
+    public boolean isOutlaw() {
+        return karma > outlawLevel;
     }
 
     /**

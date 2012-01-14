@@ -25,7 +25,6 @@ public class EntityEventListener extends EntityListener {
     public static String killerMsg;
     public static String deadedNotEnoughMoneyMsg;
     public static String killerNotEnoughMoneyMsg;
-    public static String outlawTag;
     public static String outlawBroadcast;
     public static String noLongerOutlawBroadcast;
     public static String karmaDecreasedMsg;
@@ -47,8 +46,6 @@ public class EntityEventListener extends EntityListener {
     public static boolean whole;
     public static LinkedList<String> tollDisabledIn;
     public static LinkedList<String> rewardDisabledIn;
-    public static String outlawGroup;
-    public static String normalGroup;
 
     /**
      * Flags Records as inCombat when the Player is attacked by another Player
@@ -166,10 +163,15 @@ public class EntityEventListener extends EntityListener {
             return;
 
         Record killerRecord = PvPReward.getRecord(killer.getName());
-        double deadedKDR = deadedRecord.addDeath();
-        double killerKDR = killerRecord.addKill();
+        
+        deadedRecord.incrementDeaths();
+        killerRecord.incrementKills();
+        
+        double deadedKDR = deadedRecord.kdr;
+        double killerKDR = killerRecord.kdr;
+        
         Random random = new Random();
-        double reward = amount;
+        double reward = 0;
 
         //Determine the reward amount based on the reward type
         switch (rewardType) {
@@ -188,47 +190,34 @@ public class EntityEventListener extends EntityListener {
                 break;
 
             case KARMA:
-                if (deaded.isOnline())
-                    deaded.sendMessage(getMsg(karmaDecreasedMsg, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
-                
                 //Check if the killed Player is no longer an Outlaw
-                if (deadedRecord.karma == amount) {
-                    //Add the Player to the Normal group if there is one
-                    if (!normalGroup.isEmpty()) {
-                        PvPReward.permission.playerRemoveGroup(killer, outlawGroup);
-                        PvPReward.permission.playerAddGroup(killer, normalGroup);
-                    }
-                    
-                    if (!EntityEventListener.outlawTag.isEmpty() && deaded.isOnline())
-                        deaded.setDisplayName(deadedRecord.name);
+                if (deadedRecord.decrementKarma(deaded)) {
+                    deaded.sendMessage(getMsg(karmaDecreasedMsg, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
                     PvPReward.server.broadcastMessage(getMsg(noLongerOutlawBroadcast, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
                 }
-
-                //Determine the chance of theft
+                else if (deaded.isOnline())
+                    deaded.sendMessage(getMsg(karmaDecreasedMsg, 1, deadedRecord.name, killerRecord.name, String.valueOf(deadedRecord.karma)));
+                
                 int percentOfSteal;
-                if (deadedRecord.karma > amount) {
+                
+                //The killer's karma does not change if they killed an outlaw
+                if (deadedRecord.isOutlaw()) {
                     //100% chance of theft bc the killed Player is an Outlaw
                     percentOfSteal = 100;
                     
-                    //Take back karma that should not have been added because the Player killed an Outlaw
-                    killerRecord.karma = killerRecord.karma - 2;
-                    PvPReward.save();
                     killer.sendMessage(getMsg(karmaNoChangeMsg, 0, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                 }
                 else {
                     //Chance of theft is determined by the killed Players karma
                     percentOfSteal = (int)percent + deadedRecord.karma;
-                    killer.sendMessage(getMsg(karmaIncreasedMsg, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                     
                     //Check if the killer is now an Outlaw
-                    if ((killerRecord.karma == amount + 1 || killerRecord.karma == amount + 2)  && !EntityEventListener.outlawTag.isEmpty()) {
-                        //Add the Player to the Outlaw group if there is one
-                        if (!outlawGroup.isEmpty())
-                            PvPReward.permission.playerAddGroup(killer, outlawGroup);
-                        
-                        killer.setDisplayName(outlawTag+killerRecord.name);
+                    if (killerRecord.incrementKarma(killer)) {
+                        killer.sendMessage(getMsg(karmaIncreasedMsg, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                         PvPReward.server.broadcastMessage(getMsg(outlawBroadcast, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                     }
+                    else
+                        killer.sendMessage(getMsg(karmaIncreasedMsg, 2, deadedRecord.name, killerRecord.name, String.valueOf(killerRecord.karma)));
                 }
                 
                 //Roll to see if theft will occur
@@ -237,7 +226,7 @@ public class EntityEventListener extends EntityListener {
                     return;
 
                 //Calculate the reward amount
-                int multiplier = (int)((killerRecord.karma - amount) / threshold);
+                int multiplier = (int)((killerRecord.karma - Record.outlawLevel) / threshold);
                 
                 double bonus = multiplier * (modifier);
                 if (bonus > 0) {
@@ -252,6 +241,8 @@ public class EntityEventListener extends EntityListener {
                 karmaPercent = (karmaPercent + lo) / 100;
                 reward = Econ.getPercentMoney(deaded.getName(), karmaPercent);
                 reward = reward + (reward * bonus);
+                
+                PvPReward.save();
                 break;
 
             case RANGE:
@@ -259,7 +250,7 @@ public class EntityEventListener extends EntityListener {
                 reward = reward + lo;
                 break;
 
-            default: break;
+            case FLAT_RATE: reward = amount; break;
         }
         
         reward = trim(reward);

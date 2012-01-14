@@ -1,21 +1,11 @@
 package com.codisimus.plugins.pvpreward;
 
-import com.codisimus.plugins.pvpreward.listeners.EntityEventListener;
 import com.codisimus.plugins.pvpreward.listeners.BlockEventListener;
 import com.codisimus.plugins.pvpreward.listeners.CommandListener;
+import com.codisimus.plugins.pvpreward.listeners.EntityEventListener;
 import com.codisimus.plugins.pvpreward.listeners.EntityEventListener.RewardType;
 import com.codisimus.plugins.pvpreward.listeners.PlayerEventListener;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Properties;
@@ -43,7 +33,6 @@ public class PvPReward extends JavaPlugin {
     public static String outlawName;
     public static int cooldownTime;
     public static boolean negative;
-    private static boolean enabled = true;
     private static PluginManager pm;
     private static Properties p;
     public static LinkedList<Record> records = new LinkedList<Record>();
@@ -62,9 +51,6 @@ public class PvPReward extends JavaPlugin {
             //Reset the Sign to AIR if there is one
             if (record.signLocation != null)
                 record.signLocation.getBlock().setTypeId(0);
-        
-        //Disable cooldown Thread
-        enabled = false;
     }
 
     /**
@@ -91,7 +77,7 @@ public class PvPReward extends JavaPlugin {
         if (economyProvider != null)
             Econ.economy = economyProvider.getProvider();
         
-        //Load Records Data
+        //Load Records Datap.load(new FileInputStream(file));
         loadData();
         
         //Register Events
@@ -208,14 +194,17 @@ public class PvPReward extends JavaPlugin {
             Record.graveTimeOut = Integer.parseInt(loadValue("GraveTime")) * 1000;
             Record.graveRob = format(loadValue("GraveRobMessage"));
 
-            EntityEventListener.outlawTag = format(loadValue("OutlawTag"));
+            Record.outlawTag = format(loadValue("OutlawTag"));
             karmaName = loadValue("KarmaName");
             outlawName = loadValue("OutlawName");
-            cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 60000;
+            cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 20;
 
             EntityEventListener.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase());
             EntityEventListener.percent = Integer.parseInt(loadValue("Percent"));
+            
             EntityEventListener.amount = Double.parseDouble(loadValue("Amount"));
+            Record.outlawLevel = (int)EntityEventListener.amount;
+            
             EntityEventListener.hi = Integer.parseInt(loadValue("High"));
             EntityEventListener.lo = Integer.parseInt(loadValue("Low"));
 
@@ -231,8 +220,7 @@ public class PvPReward extends JavaPlugin {
             EntityEventListener.rewardDisabledIn = new LinkedList<String>
                     (Arrays.asList(loadValue("DisableRewardInWorlds").split(", ")));
             
-            EntityEventListener.outlawGroup = loadValue("OutlawGroup");
-            EntityEventListener.normalGroup = loadValue("NormalGroup");
+            Record.outlawGroup = loadValue("OutlawGroup");
             
             fis.close();
         }
@@ -286,48 +274,20 @@ public class PvPReward extends JavaPlugin {
      * Subtracts 1 karma from all online Players' Records
      * This is repeated on an interval of the assigned cooldownTime
      */
-    private static void cooldown() {
-        //Start a new thread
-        Thread cooldown = new Thread() {
+    public void cooldown() {
+    	server.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
             @Override
-            public void run() {
-                try {
-                    while (enabled) {
-                        Thread.currentThread().sleep(cooldownTime);
-                        
-                        for (Record record: records) {
-                            //Check if the Player is online
-                            Player player = server.getPlayer(record.name);
-                            if (player != null) {
-                                record.karma--;
-                                
-                                //Check if the Player is no longer an Outlaw
-                                if (record.karma == EntityEventListener.amount) {
-                                    //Add the Player to the Normal group if there is one
-                                    if (!EntityEventListener.normalGroup.equals("")) {
-                                        PvPReward.permission.playerRemoveGroup(player,
-                                                EntityEventListener.outlawGroup);
-                                        PvPReward.permission.playerAddGroup(player,
-                                                EntityEventListener.normalGroup);
-                                    }
-                    
-                                    player.setDisplayName(player.getName());
-                                    
-                                    PvPReward.server.broadcastMessage(EntityEventListener.getMsg(
-                                            EntityEventListener.noLongerOutlawBroadcast,
-                                            1, player.getName(), "", record.karma+""));
-                                }
-                                
-                                save();
-                            }
-                        }
-                    }
+    	    public void run() {
+                for (Record record: records) {
+                    //Check if the Player is online
+                    Player player = server.getPlayer(record.name);
+                    if (player != null)
+                        record.decrementKarma(player);
                 }
-                catch (Exception e) {
-                }
-            }
-        };
-        cooldown.start();
+
+                save();
+    	    }
+    	}, 0L, new Long(cooldownTime));
     }
 
     /**
@@ -359,7 +319,12 @@ public class PvPReward extends JavaPlugin {
                 int deaths = Integer.parseInt(split[2]);
                 int karma = Integer.parseInt(split[3]);
                 
-                records.add(new Record(player, kills, deaths, karma));
+                Record record = new Record(player, kills, deaths, karma);
+                records.add(record);
+                
+                if (split.length == 5)
+                    record.group = split[4];
+                
                 line = bReader.readLine();
             }
             
@@ -384,11 +349,14 @@ public class PvPReward extends JavaPlugin {
         try {
             BufferedWriter bWriter = new BufferedWriter(new FileWriter("plugins/PvPReward/pvpreward.save"));
             for(Record record: records) {
-                //Write data in the format "name;kills;deaths;karma"
+                //Write data in the format "name;kills;deaths;karma(;group)"
                 bWriter.write(record.name.concat(";"));
                 bWriter.write(record.kills+";");
                 bWriter.write(record.deaths+";");
                 bWriter.write(String.valueOf(record.karma));
+                
+                if (record.group != null)
+                    bWriter.write(";"+record.group);
                 
                 //Write each Record on a new line
                 bWriter.newLine();

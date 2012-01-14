@@ -8,11 +8,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerListener;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.player.*;
 
 /**
  * Listens for Player's logging, teleporting, and clicking tombstone signs
@@ -40,8 +36,8 @@ public class PlayerEventListener extends PlayerListener {
         Record record = PvPReward.getRecord(player.getName());
 
         //Changes the Player's display name if they are an Outlaw
-        if (record.karma > EntityEventListener.amount && !EntityEventListener.outlawTag.isEmpty())
-            player.setDisplayName(EntityEventListener.outlawTag+record.name);
+        if (record.isOutlaw() && !Record.outlawTag.isEmpty())
+            player.setDisplayName(Record.outlawTag+record.name);
     }
 
     /**
@@ -66,7 +62,6 @@ public class PlayerEventListener extends PlayerListener {
         player.sendMessage(denyTeleMsg);
         event.setCancelled(true);
         player.damage(telePenalty);
-        return;
     }
 
     /**

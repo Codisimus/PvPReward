@@ -4,6 +4,7 @@ import com.codisimus.plugins.pvpreward.PvPReward;
 import com.codisimus.plugins.pvpreward.Record;
 import com.codisimus.plugins.pvpreward.listeners.EntityEventListener.RewardType;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
@@ -53,6 +54,13 @@ public class PlayerEventListener extends PlayerListener {
 
         Player player = event.getPlayer();
         Record record = PvPReward.getRecord(player.getName());
+        World world = player.getWorld();
+        
+        //check if player is at spawn location
+        //System.out.println("[Distance From Spawn]"+world.getSpawnLocation().distance(player.getLocation()));
+        // little work around against AuthMe cancel event when user not logged in
+        if (world.getSpawnLocation().distance(player.getLocation()) < 6.0 )
+        	return;
 
         //Return if the Player is not in combat
         if (!record.inCombat)
@@ -77,11 +85,16 @@ public class PlayerEventListener extends PlayerListener {
 
         Player player = event.getPlayer();
         Record record = PvPReward.getRecord(player.getName());
+        World world = player.getWorld();
 
         //Check if the Player is in combat
-        if (record.inCombat)
-            //Reward the attacker as if the quiting Player has died
-            EntityEventListener.rewardPvP(player, record);
+        if (record.inCombat ) {
+        	// little work around against AuthMe cancel event when user not logged in
+        	if (!(world.getSpawnLocation().distance(player.getLocation()) < 6.0) ) {
+        		//Reward the attacker as if the quiting Player has died
+        		EntityEventListener.rewardPvP(player, record);
+        	} else return;
+        }
     }
     
     /**

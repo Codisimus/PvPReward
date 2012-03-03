@@ -3,7 +3,7 @@ package com.codisimus.plugins.pvpreward;
 import net.milkbowl.vault.economy.Economy;
 
 /**
- * Manages payment/rewards of using Warps
+ * Manages money transactions
  * 
  * @author Codisimus
  */

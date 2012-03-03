@@ -1,22 +1,12 @@
 package com.codisimus.plugins.pvpreward;
 
-import com.codisimus.plugins.pvpreward.listeners.BlockEventListener;
-import com.codisimus.plugins.pvpreward.listeners.CommandListener;
-import com.codisimus.plugins.pvpreward.listeners.EntityEventListener;
-import com.codisimus.plugins.pvpreward.listeners.EntityEventListener.RewardType;
-import com.codisimus.plugins.pvpreward.listeners.PlayerEventListener;
+import com.codisimus.plugins.pvpreward.PvPRewardListener.RewardType;
 import java.io.*;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Properties;
-import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
+import java.util.*;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event.Priority;
-import org.bukkit.event.Event.Type;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -35,8 +25,8 @@ public class PvPReward extends JavaPlugin {
     public static boolean negative;
     private static PluginManager pm;
     private static Properties p;
-    public static LinkedList<Record> records = new LinkedList<Record>();
-    private static boolean save = true;
+    private static HashMap<String, Record> records = new HashMap<String, Record>();
+    private static String dataFolder;
 
     /**
      * Clears all graves that exist when this Plugin is disabled
@@ -44,10 +34,10 @@ public class PvPReward extends JavaPlugin {
      */
     @Override
     public void onDisable () {
-        if (!EntityEventListener.digGraves)
+        if (!PvPRewardListener.digGraves)
             return;
 
-        for (Record record: records)
+        for (Record record: records.values())
             //Reset the Sign to AIR if there is one
             if (record.signLocation != null)
                 record.signLocation.getBlock().setTypeId(0);
@@ -61,6 +51,12 @@ public class PvPReward extends JavaPlugin {
     public void onEnable () {
         server = getServer();
         pm = server.getPluginManager();
+        
+        File dir = this.getDataFolder();
+        if (!dir.isDirectory())
+            dir.mkdir();
+        
+        dataFolder = dir.getPath();
         
         //Load Config settings
         loadSettings();
@@ -81,16 +77,11 @@ public class PvPReward extends JavaPlugin {
         loadData();
         
         //Register Events
-        PlayerEventListener playerListener = new PlayerEventListener();
-        EntityEventListener entityListener = new EntityEventListener();
-        pm.registerEvent(Type.BLOCK_BREAK, new BlockEventListener(), Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_JOIN, playerListener, Priority.Monitor, this);
-        pm.registerEvent(Type.PLAYER_TELEPORT, playerListener, Priority.Normal, this);
-        pm.registerEvent(Type.PLAYER_QUIT, playerListener, Priority.Monitor, this);
-        pm.registerEvent(Type.PLAYER_INTERACT, playerListener, Priority.Monitor, this);
-        pm.registerEvent(Type.ENTITY_DAMAGE, entityListener, Priority.Monitor, this);
-        pm.registerEvent(Type.ENTITY_DEATH, entityListener, Priority.Monitor, this);
-        getCommand("pvp").setExecutor(new CommandListener());
+        pm.registerEvents(new PvPRewardListener(), this);
+        
+        //Register the command found in the plugin.yml
+        PvPRewardCommand.command = (String)this.getDescription().getCommands().keySet().toArray()[0];
+        getCommand(PvPRewardCommand.command).setExecutor(new PvPRewardCommand());
         
         System.out.println("PvPReward "+this.getDescription().getVersion()+" is enabled!");
         
@@ -98,126 +89,87 @@ public class PvPReward extends JavaPlugin {
         if (cooldownTime != 0)
             cooldown();
     }
-    
-    /**
-     * Moves file from PvPReward.jar to the appropriate folder
-     * Destination folder is created if it doesn't exist
-     * 
-     * @param fileName The name of the file to be moved
-     */
-    private void moveFile(String fileName) {
-        try {
-            //Retrieve file from this plugin's .jar
-            JarFile jar = new JarFile("plugins/PvPReward.jar");
-            ZipEntry entry = jar.getEntry(fileName);
-
-            //Create the destination folder if it does not exist
-            String destination = "plugins/PvPReward/";
-            File file = new File(destination.substring(0, destination.length()-1));
-            if (!file.exists())
-                file.mkdir();
-
-            File efile = new File(destination, fileName);
-            InputStream in = new BufferedInputStream(jar.getInputStream(entry));
-            OutputStream out = new BufferedOutputStream(new FileOutputStream(efile));
-            byte[] buffer = new byte[2048];
-            
-            //Copy the file
-            while (true) {
-                int nBytes = in.read(buffer);
-                if (nBytes <= 0)
-                    break;
-                out.write(buffer, 0, nBytes);
-            }
-            
-            out.flush();
-            out.close();
-            in.close();
-        }
-        catch (Exception moveFailed) {
-            System.err.println("[PvPReward] File Move Failed!");
-            moveFailed.printStackTrace();
-        }
-    }
 
     /**
      * Loads settings from the config.properties file
      * 
      */
     public void loadSettings() {
-        p = new Properties();
         try {
             //Copy the file from the jar if it is missing
-            if (!new File("plugins/PvPReward/config.properties").exists())
-                moveFile("config.properties");
+            File file = new File(dataFolder+"/config.properties");
+            if (!file.exists())
+                this.saveResource("config.properties", true);
             
-            FileInputStream fis = new FileInputStream("plugins/PvPReward/config.properties");
+            //Load config file
+            p = new Properties();
+            FileInputStream fis = new FileInputStream(file);
             p.load(fis);
             
-            EntityEventListener.deadedMsg = format(loadValue("KilledMessage"));
-            EntityEventListener.killerMsg = format(loadValue("KillerMessage"));
-            EntityEventListener.deadedNotEnoughMoneyMsg = format(loadValue("KilledNotEnoughMoney"));
-            EntityEventListener.killerNotEnoughMoneyMsg = format(loadValue("KillerNotEnoughMoney"));
-            EntityEventListener.outlawBroadcast = format(loadValue("OutlawBroadcast"));
-            EntityEventListener.noLongerOutlawBroadcast = format(loadValue("NoLongerOutlawBroadcast"));
-            EntityEventListener.karmaDecreasedMsg = format(loadValue("KarmaDecreased"));
-            EntityEventListener.karmaIncreasedMsg = format(loadValue("KarmaIncreased"));
-            EntityEventListener.karmaNoChangeMsg = format(loadValue("KarmaNoChange"));
+            PvPRewardMessages.setDeadedMsg(loadValue("KilledMessage"));
+            PvPRewardMessages.setKillerMsg(loadValue("KillerMessage"));
+            PvPRewardMessages.setDeadedNotEnoughMoneyMsg(loadValue("KilledNotEnoughMoney"));
+            PvPRewardMessages.setKillerNotEnoughMoneyMsg(loadValue("KillerNotEnoughMoney"));
+            PvPRewardMessages.setOutLawBroadcast(loadValue("OutlawBroadcast"));
+            PvPRewardMessages.setNoLongerOutLawBroadcast(loadValue("NoLongerOutlawBroadcast"));
+            PvPRewardMessages.setKarmaDecreasedMsg(loadValue("KarmaDecreased"));
+            PvPRewardMessages.setKarmaIncreasedMsg(loadValue("KarmaIncreased"));
+            PvPRewardMessages.setKarmaNoChangeMsg(loadValue("KarmaNoChange"));
 
             String tollType = loadValue("DeathTollType");
             if (tollType.equalsIgnoreCase("none")) {
-                EntityEventListener.tollAsPercent = false;
-                EntityEventListener.tollAmount = 0;
+                PvPRewardListener.tollAsPercent = false;
+                PvPRewardListener.tollAmount = 0;
             }
             else {
-                EntityEventListener.deathTollMsg = format(loadValue("DeathTollMessage"));
-                EntityEventListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
-                EntityEventListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
+                PvPRewardMessages.setDeathTollMsg(loadValue("DeathTollMessage"));
+                PvPRewardListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
+                PvPRewardListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
 
                 if (tollType.equalsIgnoreCase("percent")) 
-                    EntityEventListener.tollAsPercent = true;
+                    PvPRewardListener.tollAsPercent = true;
                 else if (tollType.equalsIgnoreCase("flatrate")) {
-                    EntityEventListener.tollAsPercent = false;
-                    EntityEventListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
+                    PvPRewardListener.tollAsPercent = false;
+                    PvPRewardListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
                 } 
             }
             
-            EntityEventListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
-            EntityEventListener.digGraves = Boolean.parseBoolean(loadValue("DigGraves"));
+            PvPRewardListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
+            PvPRewardListener.digGraves = Boolean.parseBoolean(loadValue("DigGraves"));
 
-            PlayerEventListener.denyTeleMsg = format(loadValue("DenyTeleMessage"));
-            PlayerEventListener.denyTele = Boolean.parseBoolean(loadValue("DenyTele"));
-            PlayerEventListener.telePenalty = Integer.parseInt(loadValue("TelePenalty"));
-            PlayerEventListener.penalizeLoggers = Boolean.parseBoolean(loadValue("PenalizeLoggers"));
+            PvPRewardMessages.setDenyTeleMsg(loadValue("DenyTeleMessage"));
+            PvPRewardListener.denyTele = Boolean.parseBoolean(loadValue("DenyTele"));
+            PvPRewardListener.telePenalty = Integer.parseInt(loadValue("TelePenalty"));
+            PvPRewardListener.penalizeLoggers = Boolean.parseBoolean(loadValue("PenalizeLoggers"));
 
             Record.combatTimeOut = Integer.parseInt(loadValue("CombatTime")) * 1000;
             Record.graveTimeOut = Integer.parseInt(loadValue("GraveTime")) * 1000;
-            Record.graveRob = format(loadValue("GraveRobMessage"));
+            PvPRewardMessages.setGraveRobMsg(loadValue("GraveRobMessage"));
 
-            Record.outlawTag = format(loadValue("OutlawTag"));
+            Record.outlawTag = PvPRewardMessages.format(loadValue("OutlawTag"));
             karmaName = loadValue("KarmaName");
             outlawName = loadValue("OutlawName");
             cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 20;
 
-            EntityEventListener.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase());
-            EntityEventListener.percent = Integer.parseInt(loadValue("Percent"));
+            PvPRewardListener.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase().replace(' ', '_'));
+            PvPRewardListener.percent = Integer.parseInt(loadValue("Percent"));
             
-            EntityEventListener.amount = Double.parseDouble(loadValue("Amount"));
-            Record.outlawLevel = (int)EntityEventListener.amount;
+            PvPRewardListener.amount = Double.parseDouble(loadValue("Amount"));
+            Record.outlawLevel = (int)PvPRewardListener.amount;
             
-            EntityEventListener.hi = Integer.parseInt(loadValue("High"));
-            EntityEventListener.lo = Integer.parseInt(loadValue("Low"));
+            PvPRewardListener.hi = Integer.parseInt(loadValue("High"));
+            PvPRewardListener.lo = Integer.parseInt(loadValue("Low"));
 
-            EntityEventListener.threshold = Integer.parseInt(loadValue("KarmaThreshold"));
-            EntityEventListener.modifier = Integer.parseInt(loadValue("OutlawModifier")) / 100;
-            EntityEventListener.max = Integer.parseInt(loadValue("ModifierMax")) / 100;
-            EntityEventListener.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
+            PvPRewardListener.threshold = Integer.parseInt(loadValue("KarmaThreshold"));
+            PvPRewardListener.modifier = Integer.parseInt(loadValue("OutlawModifier")) / 100;
+            PvPRewardListener.max = Integer.parseInt(loadValue("ModifierMax")) / 100;
+            PvPRewardListener.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
 
             negative = Boolean.parseBoolean(loadValue("Negative"));
             
-            EntityEventListener.tollDisabledIn = new LinkedList<String>
+            PvPRewardListener.tollDisabledIn = new LinkedList<String>
                     (Arrays.asList(loadValue("DisableDeathTollInWorlds").split(", ")));
-            EntityEventListener.rewardDisabledIn = new LinkedList<String>
+            PvPRewardListener.rewardDisabledIn = new LinkedList<String>
                     (Arrays.asList(loadValue("DisableRewardInWorlds").split(", ")));
             
             Record.outlawGroup = loadValue("OutlawGroup");
@@ -279,7 +231,7 @@ public class PvPReward extends JavaPlugin {
     	server.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
             @Override
     	    public void run() {
-                for (Record record: records) {
+                for (Record record: records.values()) {
                     //Check if the Player is online
                     Player player = server.getPlayer(record.name);
                     if (player != null)
@@ -292,48 +244,48 @@ public class PvPReward extends JavaPlugin {
     }
 
     /**
-     * Adds various Unicode characters and colors to a string
-     *
-     * @param string The string being formated
-     * @return The formatted String
-     */
-    private static String format(String string) {
-        return string.replaceAll("&", "§").replaceAll("<ae>", "æ").replaceAll("<AE>", "Æ")
-                .replaceAll("<o/>", "ø").replaceAll("<O/>", "Ø")
-                .replaceAll("<a>", "å").replaceAll("<A>", "Å");
-    }
-
-    /**
      * Reads save file to load PvPReward data
      * Saving is turned off if an error occurs
      */
     private static void loadData() {
         try {
-            new File("plugins/PvPReward/pvpreward.save").createNewFile();
-            BufferedReader bReader = new BufferedReader(new FileReader("plugins/PvPReward/pvpreward.save"));
+            File file = new File(dataFolder+"/pvpreward.records");
+            if (!file.exists()) {
+                File old = new File(dataFolder+"/pvpreward.save");
+                if (old.exists())
+                    old.renameTo(file);
+                else
+                    return;
+            }
+            
+            BufferedReader bReader = new BufferedReader(new FileReader(file));
             String line = bReader.readLine();
             while (line != null) {
-                String[] split = line.split(";");
-                
-                String player = split[0];
-                int kills = Integer.parseInt(split[1]);
-                int deaths = Integer.parseInt(split[2]);
-                int karma = Integer.parseInt(split[3]);
-                
-                Record record = new Record(player, kills, deaths, karma);
-                records.add(record);
-                
-                if (split.length == 5)
-                    record.group = split[4];
-                
-                line = bReader.readLine();
+                try {
+                    String[] split = line.split(";");
+
+                    String player = split[0];
+                    int kills = Integer.parseInt(split[1]);
+                    int deaths = Integer.parseInt(split[2]);
+                    int karma = Integer.parseInt(split[3]);
+
+                    Record record = new Record(player, kills, deaths, karma);
+                    records.put(player, record);
+
+                    if (split.length == 5)
+                        record.group = split[4];
+
+                    line = bReader.readLine();
+                }
+                catch (Exception corruptedData) {
+                    /* Do not load line */
+                }
             }
             
             bReader.close();
         }
         catch (Exception loadFailed) {
-            save = false;
-            System.out.println("[PvPReward] Load failed, saving turned off to prevent loss of data");
+            System.out.println("[PvPReward] Load failed");
             loadFailed.printStackTrace();
         }
     }
@@ -343,13 +295,13 @@ public class PvPReward extends JavaPlugin {
      * Old file is overwritten
      */
     public static void save() {
-        //Cancel if saving is turned off
-        if (!save)
-            return;
-
         try {
-            BufferedWriter bWriter = new BufferedWriter(new FileWriter("plugins/PvPReward/pvpreward.save"));
-            for(Record record: records) {
+            File file = new File(dataFolder+"/pvpreward.records");
+            if (!file.exists())
+                file.createNewFile();
+            
+            BufferedWriter bWriter = new BufferedWriter(new FileWriter(dataFolder+"/pvpreward.records"));
+            for(Record record: records.values()) {
                 //Write data in the format "name;kills;deaths;karma(;group)"
                 bWriter.write(record.name.concat(";"));
                 bWriter.write(record.kills+";");
@@ -379,13 +331,13 @@ public class PvPReward extends JavaPlugin {
      * @return The Record of the Player
      */
     public static Record getRecord(String player) {
-        for(Record record: records)
+        for(Record record: records.values())
             if (record.name.equals(player))
                 return record;
 
         //Create a new Record
         Record newRecord = new Record(player);
-        records.add(newRecord);
+        records.put(player, newRecord);
         return newRecord;
     }
 
@@ -396,11 +348,23 @@ public class PvPReward extends JavaPlugin {
      * @return The Record of the Player
      */
     public static Record findRecord(String player) {
-        for(Record record: records)
+        for(Record record: records.values())
             if (record.name.equals(player))
                 return record;
 
         //Return null because the Player does not have a Record
         return null;
+    }
+
+    /**
+     * Returns a LinkedList of records in sorted order
+     * Records are sorted in order of rank (highest KDR first)
+     * 
+     * @return The sorted LinkedList of records
+     */
+    public static LinkedList<Record> getRecords() {
+        LinkedList<Record> recordList = new LinkedList(records.values());
+        Collections.sort(recordList);
+        return recordList;
     }
 }

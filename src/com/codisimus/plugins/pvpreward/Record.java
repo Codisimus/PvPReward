@@ -17,10 +17,9 @@ import org.bukkit.inventory.PlayerInventory;
  * 
  * @author Codisimus
  */
-public class Record implements Comparable {
+public class Record implements Comparable<Record> {
     public static int combatTimeOut;
     public static int graveTimeOut;
-    public static String graveRob;
     public static int outlawLevel;
     public static String outlawTag;
     public static String outlawGroup;
@@ -275,7 +274,7 @@ public class Record implements Comparable {
         for (ItemStack item: grave)
             sack.addItem(item);
         
-        graveRobber.sendMessage(graveRob);
+        graveRobber.sendMessage(PvPRewardMessages.getGraveRobMsg());
         signLocation.getBlock().setTypeId(0);
         signLocation = null;
     }
@@ -283,17 +282,14 @@ public class Record implements Comparable {
     /**
      * Compares the KDRs of this Record and the given Record
      * 
-     * @param obj The Record being compared to this one
+     * @param rec The Record being compared to this one
      * @return 1, 0, or -1 if this Record's KDR is less, equal or greater respectively
      */
     @Override
-    public int compareTo(Object obj) {
-        //Records are compared by their kdr value
-        double objKDR = ((Record)obj).kdr;
-        
-        if (kdr < objKDR)
+    public int compareTo(Record rec) {
+        if (kdr < rec.kdr)
             return 1;
-        else if (kdr > objKDR)
+        else if (kdr > rec.kdr)
             return -1;
         else
             return 0;

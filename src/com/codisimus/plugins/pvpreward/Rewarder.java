@@ -15,12 +15,7 @@ public class Rewarder implements Listener {
         KARMA, FLAT_RATE, PERCENT_KDR, PERCENT, PERCENT_RANGE, RANGE
     }
     public static boolean tollAsPercent;
-    public static int telePenalty;
-    public static boolean denyTele;
-    public static boolean penalizeLoggers;
     public static double tollAmount;
-    public static boolean disableTollForPvP;
-    public static boolean digGraves;
     public static RewardType rewardType;
     public static int percent;
     public static double amount;
@@ -31,7 +26,6 @@ public class Rewarder implements Listener {
     public static int lo;
     public static boolean whole;
     public static LinkedList<String> tollDisabledIn;
-    public static LinkedList<String> rewardDisabledIn;
     
     /**
      * Takes the death toll amount from the given Player

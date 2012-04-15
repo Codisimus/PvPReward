@@ -1,6 +1,6 @@
 package com.codisimus.plugins.pvpreward;
 
-import com.codisimus.plugins.pvpreward.PvPRewardListener.RewardType;
+import com.codisimus.plugins.pvpreward.Rewarder.RewardType;
 import java.util.Iterator;
 import java.util.LinkedList;
 import org.bukkit.command.Command;
@@ -314,7 +314,7 @@ public class PvPRewardCommand implements CommandExecutor {
         player.sendMessage("§2/"+command+" reset kdr all§b Set everyone's kills and deaths to 0");
         
         //Only display karma commands if the reward type is set to karma
-        if (PvPRewardListener.rewardType.equals(RewardType.KARMA)) {
+        if (Rewarder.rewardType.equals(RewardType.KARMA)) {
             player.sendMessage("§2/"+command+" reset "+PvPReward.karmaName+" (Player)§b Set "+PvPReward.karmaName+" level to 0");
             player.sendMessage("§2/"+command+" reset "+PvPReward.karmaName+" all§b Set everyone's "+PvPReward.karmaName+" level to 0");
         }
@@ -329,7 +329,7 @@ public class PvPRewardCommand implements CommandExecutor {
         player.sendMessage("§e  PvPReward Help Page:");
         
         //Only display karma commands if the reward type is set to karma
-        if (PvPRewardListener.rewardType.equals(RewardType.KARMA)) {
+        if (Rewarder.rewardType.equals(RewardType.KARMA)) {
             player.sendMessage("§2/"+command+" "+PvPReward.outlawName+"s§b List current "+PvPReward.outlawName+"s");
             player.sendMessage("§2/"+command+" "+PvPReward.karmaName+" (Player)§b List current "+PvPReward.karmaName+" level");
         }

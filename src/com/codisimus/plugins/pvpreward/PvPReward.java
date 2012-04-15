@@ -1,6 +1,6 @@
 package com.codisimus.plugins.pvpreward;
 
-import com.codisimus.plugins.pvpreward.PvPRewardListener.RewardType;
+import com.codisimus.plugins.pvpreward.Rewarder.RewardType;
 import java.io.*;
 import java.util.*;
 import net.milkbowl.vault.economy.Economy;
@@ -118,19 +118,19 @@ public class PvPReward extends JavaPlugin {
 
             String tollType = loadValue("DeathTollType");
             if (tollType.equalsIgnoreCase("none")) {
-                PvPRewardListener.tollAsPercent = false;
-                PvPRewardListener.tollAmount = 0;
+                Rewarder.tollAsPercent = false;
+                Rewarder.tollAmount = 0;
             }
             else {
                 PvPRewardMessages.setDeathTollMsg(loadValue("DeathTollMessage"));
-                PvPRewardListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
+                Rewarder.tollAmount = Double.parseDouble(loadValue("DeathToll"));
                 PvPRewardListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
 
                 if (tollType.equalsIgnoreCase("percent")) 
-                    PvPRewardListener.tollAsPercent = true;
+                    Rewarder.tollAsPercent = true;
                 else if (tollType.equalsIgnoreCase("flatrate")) {
-                    PvPRewardListener.tollAsPercent = false;
-                    PvPRewardListener.tollAmount = Double.parseDouble(loadValue("DeathToll"));
+                    Rewarder.tollAsPercent = false;
+                    Rewarder.tollAmount = Double.parseDouble(loadValue("DeathToll"));
                 } 
             }
             
@@ -151,23 +151,23 @@ public class PvPReward extends JavaPlugin {
             outlawName = loadValue("OutlawName");
             cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 20;
 
-            PvPRewardListener.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase().replace(' ', '_'));
-            PvPRewardListener.percent = Integer.parseInt(loadValue("Percent"));
+            Rewarder.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase().replace(' ', '_'));
+            Rewarder.percent = Integer.parseInt(loadValue("Percent"));
             
-            PvPRewardListener.amount = Double.parseDouble(loadValue("Amount"));
-            Record.outlawLevel = (int)PvPRewardListener.amount;
+            Rewarder.amount = Double.parseDouble(loadValue("Amount"));
+            Record.outlawLevel = (int)Rewarder.amount;
             
-            PvPRewardListener.hi = Integer.parseInt(loadValue("High"));
-            PvPRewardListener.lo = Integer.parseInt(loadValue("Low"));
+            Rewarder.hi = Integer.parseInt(loadValue("High"));
+            Rewarder.lo = Integer.parseInt(loadValue("Low"));
 
-            PvPRewardListener.threshold = Integer.parseInt(loadValue("KarmaThreshold"));
-            PvPRewardListener.modifier = Integer.parseInt(loadValue("OutlawModifier")) / 100;
-            PvPRewardListener.max = Integer.parseInt(loadValue("ModifierMax")) / 100;
-            PvPRewardListener.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
+            Rewarder.threshold = Integer.parseInt(loadValue("KarmaThreshold"));
+            Rewarder.modifier = Integer.parseInt(loadValue("OutlawModifier")) / 100;
+            Rewarder.max = Integer.parseInt(loadValue("ModifierMax")) / 100;
+            Rewarder.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
 
             negative = Boolean.parseBoolean(loadValue("Negative"));
             
-            PvPRewardListener.tollDisabledIn = new LinkedList<String>
+            Rewarder.tollDisabledIn = new LinkedList<String>
                     (Arrays.asList(loadValue("DisableDeathTollInWorlds").split(", ")));
             PvPRewardListener.rewardDisabledIn = new LinkedList<String>
                     (Arrays.asList(loadValue("DisableRewardInWorlds").split(", ")));
@@ -301,7 +301,7 @@ public class PvPReward extends JavaPlugin {
                 file.createNewFile();
             
             BufferedWriter bWriter = new BufferedWriter(new FileWriter(dataFolder+"/pvpreward.records"));
-            for(Record record: records.values()) {
+            for (Record record: records.values()) {
                 //Write data in the format "name;kills;deaths;karma(;group)"
                 bWriter.write(record.name.concat(";"));
                 bWriter.write(record.kills+";");
@@ -331,7 +331,7 @@ public class PvPReward extends JavaPlugin {
      * @return The Record of the Player
      */
     public static Record getRecord(String player) {
-        for(Record record: records.values())
+        for (Record record: records.values())
             if (record.name.equals(player))
                 return record;
 
@@ -348,7 +348,7 @@ public class PvPReward extends JavaPlugin {
      * @return The Record of the Player
      */
     public static Record findRecord(String player) {
-        for(Record record: records.values())
+        for (Record record: records.values())
             if (record.name.equals(player))
                 return record;
 

@@ -25,26 +25,11 @@ import org.bukkit.event.player.PlayerTeleportEvent;
  * @author Codisimus
  */
 public class PvPRewardListener implements Listener {
-    public static enum RewardType {
-        KARMA, FLAT_RATE, PERCENT_KDR, PERCENT, PERCENT_RANGE, RANGE
-    }
-    public static boolean tollAsPercent;
     public static int telePenalty;
     public static boolean denyTele;
     public static boolean penalizeLoggers;
-    public static double tollAmount;
     public static boolean disableTollForPvP;
     public static boolean digGraves;
-    public static RewardType rewardType;
-    public static int percent;
-    public static double amount;
-    public static int threshold;
-    public static int modifier;
-    public static int max;
-    public static int hi;
-    public static int lo;
-    public static boolean whole;
-    public static LinkedList<String> tollDisabledIn;
     public static LinkedList<String> rewardDisabledIn;
 
     /**
@@ -53,7 +38,7 @@ public class PvPRewardListener implements Listener {
      * @param event The EntityDamageEvent that occurred
      */
     @EventHandler (priority = EventPriority.MONITOR)
-    public void onEntityDamage(EntityDamageEvent event) {
+    public void onEntityDamage(EntityDamageByEntityEvent event) {
         if (event.isCancelled())
             return;
         
@@ -62,12 +47,8 @@ public class PvPRewardListener implements Listener {
         if (!(wounded instanceof Player))
             return;
 
-        //Return if the Player was not damaged by an enitity
-        if (!(event instanceof EntityDamageByEntityEvent))
-            return;
-
         //Return if the event was not PvP
-        Entity attacker = ((EntityDamageByEntityEvent)event).getDamager();
+        Entity attacker = event.getDamager();
         if (!(attacker instanceof Player))
             return;
 
@@ -91,7 +72,7 @@ public class PvPRewardListener implements Listener {
         if (!(entitityKilled instanceof Player))
             return;
 
-        Player deaded = (Player)event.getEntity();
+        Player deaded = (Player)entitityKilled;
         Record record = PvPReward.getRecord(deaded.getName());
 
         //Dig a grave for the killed Player if the option is enabled
@@ -121,7 +102,7 @@ public class PvPRewardListener implements Listener {
     @EventHandler (priority = EventPriority.MONITOR)
     public void onPlayerJoin (PlayerJoinEvent event) {
         //Return if the reward type is not Karma
-        if (!PvPRewardListener.rewardType.equals(RewardType.KARMA))
+        if (!Rewarder.rewardType.equals(Rewarder.RewardType.KARMA))
             return;
 
         Player player = event.getPlayer();

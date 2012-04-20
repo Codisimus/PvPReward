@@ -12,7 +12,7 @@ import org.bukkit.event.Listener;
  */
 public class Rewarder implements Listener {
     public static enum RewardType {
-        KARMA, FLAT_RATE, PERCENT_KDR, PERCENT, PERCENT_RANGE, RANGE
+        KARMA, FLATRATE, PERCENTKDR, PERCENT, PERCENTRANGE, RANGE
     }
     public static boolean tollAsPercent;
     public static double tollAmount;
@@ -92,7 +92,7 @@ public class Rewarder implements Listener {
 
         //Determine the reward amount based on the reward type
         switch (rewardType) {
-            case PERCENT_KDR:
+            case PERCENTKDR:
                 reward = Econ.getPercentMoney(deaded.getName(), (deadedKDR / killerKDR) / 100.0);
                 break;
 
@@ -100,7 +100,7 @@ public class Rewarder implements Listener {
                 reward = Econ.getPercentMoney(deaded.getName(), percent / 100.0);
                 break;
 
-            case PERCENT_RANGE:
+            case PERCENTRANGE:
                 double rangePercent = random.nextInt((hi + 1) - lo);
                 rangePercent = (rangePercent + lo) / 100;
                 reward = Econ.getPercentMoney(deaded.getName(), rangePercent);
@@ -164,7 +164,7 @@ public class Rewarder implements Listener {
                 reward = reward + lo;
                 break;
 
-            case FLAT_RATE: reward = amount; break;
+            case FLATRATE: reward = amount; break;
         }
         
         reward = trim(reward);

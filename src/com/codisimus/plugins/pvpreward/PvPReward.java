@@ -151,7 +151,7 @@ public class PvPReward extends JavaPlugin {
             outlawName = loadValue("OutlawName");
             cooldownTime = Integer.parseInt(loadValue("CooldownTime")) * 20;
 
-            Rewarder.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase().replace(' ', '_'));
+            Rewarder.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase().replace(" ", ""));
             Rewarder.percent = Integer.parseInt(loadValue("Percent"));
             
             Rewarder.amount = Double.parseDouble(loadValue("Amount"));

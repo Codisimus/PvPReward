@@ -6,6 +6,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -46,8 +47,12 @@ public class PvPRewardListener implements Listener {
         if (!(wounded instanceof Player))
             return;
 
-        //Return if the event was not PvP
+        //Get the Shooter if the Entity was a Projectile
         Entity attacker = event.getDamager();
+        if (attacker instanceof Projectile)
+            attacker = ((Projectile)attacker).getShooter();
+        
+        //Return if the event was not PvP
         if (!(attacker instanceof Player))
             return;
 

@@ -89,7 +89,7 @@ public class Record implements Comparable<Record> {
      */
     private void calculateKDR() {
         //Caculate the new KDR
-        kdr = deaths == 0 ? kills : (double)kills / deaths;
+        kdr = (double)kills / (deaths == 0 ? 1 : deaths);
         
         //Remove all but two decimal places
         long temp = (long)(kdr * 100);

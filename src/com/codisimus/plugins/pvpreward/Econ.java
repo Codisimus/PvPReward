@@ -42,6 +42,29 @@ public class Econ {
     }
 
     /**
+     * Subtracts a specific amount from the Player's total balance
+     * 
+     * @param player The Player who was killed and gets money taken from them
+     * @param amount The amount which will be taken
+     * @return true if the transaction was successful
+     */
+    public static boolean forceTakeMoney(String player, double amount) {
+        //Cancel if the amount is 0
+        if (amount == 0)
+            return false;
+        
+        //Ban the Player if they cannot afford the transaction
+        if (!economy.has(player, amount)) {
+            PvPReward.server.dispatchCommand(PvPReward.server.getConsoleSender(), "tempban "+player+" 1h");
+            PvPReward.server.broadcastMessage("§5"+player+" was temporarily banned for 1 hour due to Combat Logging!");
+            return false;
+        }
+
+        economy.withdrawPlayer(player, amount);
+        return true;
+    }
+
+    /**
      * Adds money to the Player's balance and returns the currency name
      * 
      * @param player The Player who is getting money added to their account

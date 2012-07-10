@@ -83,7 +83,13 @@ public class PvPReward extends JavaPlugin {
         PvPRewardCommand.command = (String)this.getDescription().getCommands().keySet().toArray()[0];
         getCommand(PvPRewardCommand.command).setExecutor(new PvPRewardCommand());
         
-        System.out.println("PvPReward "+this.getDescription().getVersion()+" is enabled!");
+        Properties version = new Properties();
+        try {
+            version.load(this.getResource("version.properties"));
+        }
+        catch (Exception ex) {
+        }
+        System.out.println("PvPReward "+this.getDescription().getVersion()+" (Build "+version.getProperty("Build")+") is enabled!");
         
         //Start cooldown Thread if there is one
         if (cooldownTime != 0)
@@ -115,6 +121,7 @@ public class PvPReward extends JavaPlugin {
             PvPRewardMessages.setKarmaDecreasedMsg(loadValue("KarmaDecreased"));
             PvPRewardMessages.setKarmaIncreasedMsg(loadValue("KarmaIncreased"));
             PvPRewardMessages.setKarmaNoChangeMsg(loadValue("KarmaNoChange"));
+            //PvPRewardMessages.setCombatLoggerBroadcast(loadValue("CombatLoggerBroadcast"));
 
             String tollType = loadValue("DeathTollType");
             if (tollType.equalsIgnoreCase("none")) {
@@ -141,6 +148,7 @@ public class PvPReward extends JavaPlugin {
             PvPRewardListener.denyTele = Boolean.parseBoolean(loadValue("DenyTele"));
             PvPRewardListener.telePenalty = Integer.parseInt(loadValue("TelePenalty"));
             PvPRewardListener.penalizeLoggers = Boolean.parseBoolean(loadValue("PenalizeLoggers"));
+            //PvPRewardListener.loggerPenalty = Double.parseDouble(loadValue("LoggerPenalty"));
 
             Record.combatTimeOut = Integer.parseInt(loadValue("CombatTime")) * 1000;
             Record.graveTimeOut = Integer.parseInt(loadValue("GraveTime")) * 1000;

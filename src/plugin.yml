@@ -1,6 +1,6 @@
 name: PvPReward
 main: com.codisimus.plugins.pvpreward.PvPReward
-version: 1.7.2
+version: 1.8.0
 author: Codisimus
 website: www.codisimus.com
 description: Killers steal money from their victims
@@ -12,11 +12,8 @@ commands:
     usage: /<command> help
 permissions:
   pvpreward.getreward:
-    default: true
     description: Needed to steal money from another Player
   pvpreward.givereward:
-    default: true
     description: Needed to have money stolen from you
   pvpreward.ignoredeathtoll:
-    default: op
     description: Do not pay Death Toll when you die

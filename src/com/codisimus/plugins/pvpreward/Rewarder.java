@@ -156,7 +156,6 @@ public class Rewarder implements Listener {
                 reward = Econ.getPercentMoney(deaded.getName(), karmaPercent);
                 reward = reward + (reward * bonus);
                 
-                PvPReward.save();
                 break;
 
             case RANGE:
@@ -166,6 +165,8 @@ public class Rewarder implements Listener {
 
             case FLATRATE: reward = amount; break;
         }
+        
+        PvPReward.save();
         
         reward = trim(reward);
         

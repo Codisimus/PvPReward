@@ -18,6 +18,7 @@ public class PvPRewardMessages {
     private static String deathToll;
     private static String denyTele;
     private static String graveRob;
+    private static String combatLoggerBroadcast;
     
     public static void setDeadedMsg(String msg) {
         deaded = format(msg);
@@ -65,6 +66,10 @@ public class PvPRewardMessages {
     
     public static void setGraveRobMsg(String msg) {
         graveRob = format(msg);
+    }
+    
+    public static void setCombatLoggerBroadcast(String msg) {
+        combatLoggerBroadcast = format(msg);
     }
     
     /**
@@ -261,6 +266,10 @@ public class PvPRewardMessages {
     
     public static String getGraveRobMsg() {
         return graveRob;
+    }
+    
+    public static String getCombatLoggerBroadcast(double amount, String player) {
+       return combatLoggerBroadcast.replace("<player>", player).replace("<amount>", Econ.format(amount));
     }
     
     /**

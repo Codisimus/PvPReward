@@ -31,6 +31,7 @@ public class PvPRewardListener implements Listener {
     public static boolean disableTollForPvP;
     public static boolean digGraves;
     public static LinkedList<String> rewardDisabledIn;
+    public static double loggerPenalty;
 
     /**
      * Flags Records as inCombat when the Player is attacked by another Player
@@ -156,12 +157,24 @@ public class PvPRewardListener implements Listener {
             return;
 
         Player player = event.getPlayer();
-        Record record = PvPReward.getRecord(player.getName());
+        String playerName = player.getName();
+        Record record = PvPReward.getRecord(playerName);
 
         //Check if the Player is in combat
-        if (record.inCombat)
+        if (record.inCombat) {
             //Reward the attacker as if the quiting Player has died
             Rewarder.rewardPvP(player, record);
+            
+            /*
+            String logger = record.inCombatWith;
+            record.resetCombat();
+            
+            if (Econ.forceTakeMoney(playerName, loggerPenalty)) {
+                PvPReward.server.broadcastMessage(PvPRewardMessages.getCombatLoggerBroadcast(loggerPenalty, playerName));
+                Econ.giveMoney(logger, loggerPenalty);
+            }
+            */
+        }
     }
     
     /**

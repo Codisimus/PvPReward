@@ -45,7 +45,7 @@ public class PvPRewardCommand implements CommandExecutor {
         try {
             action = Action.valueOf(args[0].toUpperCase());
         }
-        catch (Exception notEnum) {
+        catch (IllegalArgumentException notEnum) {
             sendHelp(player);
             return true;
         }

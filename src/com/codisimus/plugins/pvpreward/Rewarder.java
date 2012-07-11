@@ -93,6 +93,11 @@ public class Rewarder implements Listener {
         //Determine the reward amount based on the reward type
         switch (rewardType) {
             case PERCENTKDR:
+                
+                // Making sure that the killer at least has KDR of 1
+                if(killerKDR < 1)
+                    killerKDR = 1;
+                
                 reward = Econ.getPercentMoney(deaded.getName(), (deadedKDR / killerKDR) / 100.0);
                 break;
 

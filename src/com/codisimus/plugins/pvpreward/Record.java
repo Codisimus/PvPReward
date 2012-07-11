@@ -91,6 +91,11 @@ public class Record implements Comparable<Record> {
         //Caculate the new KDR
         kdr = (double)kills / (deaths == 0 ? 1 : deaths);
         
+        if(kdr < 1)
+        {
+            kdr = 1;
+        }
+        
         //Remove all but two decimal places
         long temp = (long)(kdr * 100);
         kdr = (double)temp / 100;

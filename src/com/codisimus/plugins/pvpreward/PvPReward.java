@@ -340,7 +340,7 @@ public class PvPReward extends JavaPlugin {
      */
     public static Record getRecord(String player) {
         for (Record record: records.values())
-            if (record.name.equals(player))
+            if (record.name.equalsIgnoreCase(player))
                 return record;
 
         //Create a new Record
@@ -357,7 +357,7 @@ public class PvPReward extends JavaPlugin {
      */
     public static Record findRecord(String player) {
         for (Record record: records.values())
-            if (record.name.equalsignorecase(player))
+            if (record.name.equalsIgnoreCase(player))
                 return record;
 
         //Return null because the Player does not have a Record

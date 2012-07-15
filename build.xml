@@ -72,9 +72,9 @@
 
     -->
     <target name="-pre-jar" > 
-    <propertyfile file="${src.dir}\version.properties"> 
-    <entry key="Build" value="1" type="int" operation="+"/> 
-    </propertyfile> 
+        <propertyfile file="${src.dir}\version.properties"> 
+            <entry key="Build" value="1" type="int" operation="+"/> 
+        </propertyfile> 
     </target>
     
     <target name="-post-jar">

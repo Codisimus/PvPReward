@@ -3,10 +3,12 @@ package com.codisimus.plugins.pvpreward;
 import com.codisimus.plugins.pvpreward.Rewarder.RewardType;
 import java.io.*;
 import java.util.*;
+import java.util.logging.Logger;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -23,6 +25,8 @@ public class PvPReward extends JavaPlugin {
     public static String outlawName;
     public static int cooldownTime;
     public static boolean negative;
+    static Plugin plugin;
+    static Logger logger;
     private static PluginManager pm;
     private static Properties p;
     private static HashMap<String, Record> records = new HashMap<String, Record>();
@@ -30,88 +34,93 @@ public class PvPReward extends JavaPlugin {
 
     /**
      * Clears all graves that exist when this Plugin is disabled
-     *
      */
     @Override
     public void onDisable () {
-        if (!PvPRewardListener.digGraves)
+        if (!PvPRewardListener.digGraves) {
             return;
+        }
 
-        for (Record record: records.values())
+        for (Record record: records.values()) {
             //Reset the Sign to AIR if there is one
-            if (record.signLocation != null)
+            if (record.signLocation != null) {
                 record.signLocation.getBlock().setTypeId(0);
+            }
+        }
     }
 
     /**
      * Calls methods to load this Plugin when it is enabled
-     *
      */
     @Override
     public void onEnable () {
+        plugin = this;
         server = getServer();
         pm = server.getPluginManager();
-        
+        logger = getLogger();
+
         File dir = this.getDataFolder();
-        if (!dir.isDirectory())
+        if (!dir.isDirectory()) {
             dir.mkdir();
-        
+        }
+
         dataFolder = dir.getPath();
-        
-        //Load Config settings
+
         loadSettings();
-        
+
         //Find Permissions
         RegisteredServiceProvider<Permission> permissionProvider =
                 getServer().getServicesManager().getRegistration(net.milkbowl.vault.permission.Permission.class);
-        if (permissionProvider != null)
+        if (permissionProvider != null) {
             permission = permissionProvider.getProvider();
-        
+        }
+
         //Find Economy
         RegisteredServiceProvider<Economy> economyProvider =
                 getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
-        if (economyProvider != null)
+        if (economyProvider != null) {
             Econ.economy = economyProvider.getProvider();
-        
-        //Load Records Datap.load(new FileInputStream(file));
+        }
+
         loadData();
-        
+
         //Register Events
         pm.registerEvents(new PvPRewardListener(), this);
-        
+
         //Register the command found in the plugin.yml
-        PvPRewardCommand.command = (String)this.getDescription().getCommands().keySet().toArray()[0];
+        PvPRewardCommand.command = (String) this.getDescription().getCommands().keySet().toArray()[0];
         getCommand(PvPRewardCommand.command).setExecutor(new PvPRewardCommand());
         
         Properties version = new Properties();
         try {
             version.load(this.getResource("version.properties"));
+        } catch (Exception ex) {
         }
-        catch (Exception ex) {
-        }
-        System.out.println("PvPReward "+this.getDescription().getVersion()+" (Build "+version.getProperty("Build")+") is enabled!");
-        
+        logger.info("PvPReward " + this.getDescription().getVersion()
+                + " (Build " + version.getProperty("Build") + ") is enabled!");
+
         //Start cooldown Thread if there is one
-        if (cooldownTime != 0)
+        if (cooldownTime != 0) {
             cooldown();
+        }
     }
 
     /**
      * Loads settings from the config.properties file
-     * 
      */
     public void loadSettings() {
         try {
             //Copy the file from the jar if it is missing
-            File file = new File(dataFolder+"/config.properties");
-            if (!file.exists())
+            File file = new File(dataFolder + "/config.properties");
+            if (!file.exists()) {
                 this.saveResource("config.properties", true);
-            
+            }
+
             //Load config file
             p = new Properties();
             FileInputStream fis = new FileInputStream(file);
             p.load(fis);
-            
+
             PvPRewardMessages.setDeadedMsg(loadValue("KilledMessage"));
             PvPRewardMessages.setKillerMsg(loadValue("KillerMessage"));
             PvPRewardMessages.setDeadedNotEnoughMoneyMsg(loadValue("KilledNotEnoughMoney"));
@@ -121,26 +130,25 @@ public class PvPReward extends JavaPlugin {
             PvPRewardMessages.setKarmaDecreasedMsg(loadValue("KarmaDecreased"));
             PvPRewardMessages.setKarmaIncreasedMsg(loadValue("KarmaIncreased"));
             PvPRewardMessages.setKarmaNoChangeMsg(loadValue("KarmaNoChange"));
-            //PvPRewardMessages.setCombatLoggerBroadcast(loadValue("CombatLoggerBroadcast"));
+            PvPRewardMessages.setCombatLoggerBroadcast(loadValue("CombatLoggerBroadcast"));
 
             String tollType = loadValue("DeathTollType");
             if (tollType.equalsIgnoreCase("none")) {
                 Rewarder.tollAsPercent = false;
                 Rewarder.tollAmount = 0;
-            }
-            else {
+            } else {
                 PvPRewardMessages.setDeathTollMsg(loadValue("DeathTollMessage"));
                 Rewarder.tollAmount = Double.parseDouble(loadValue("DeathToll"));
                 PvPRewardListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
 
-                if (tollType.equalsIgnoreCase("percent")) 
+                if (tollType.equalsIgnoreCase("percent")) {
                     Rewarder.tollAsPercent = true;
-                else if (tollType.equalsIgnoreCase("flatrate")) {
+                } else if (tollType.equalsIgnoreCase("flatrate")) {
                     Rewarder.tollAsPercent = false;
                     Rewarder.tollAmount = Double.parseDouble(loadValue("DeathToll"));
                 } 
             }
-            
+
             PvPRewardListener.disableTollForPvP = Boolean.parseBoolean(loadValue("DisableTollForPvP"));
             PvPRewardListener.digGraves = Boolean.parseBoolean(loadValue("DigGraves"));
 
@@ -148,10 +156,10 @@ public class PvPReward extends JavaPlugin {
             PvPRewardListener.denyTele = Boolean.parseBoolean(loadValue("DenyTele"));
             PvPRewardListener.telePenalty = Integer.parseInt(loadValue("TelePenalty"));
             PvPRewardListener.penalizeLoggers = Boolean.parseBoolean(loadValue("PenalizeLoggers"));
-            //PvPRewardListener.loggerPenalty = Double.parseDouble(loadValue("LoggerPenalty"));
+            PvPRewardListener.loggerPenalty = Double.parseDouble(loadValue("LoggerPenalty"));
 
-            Record.combatTimeOut = Integer.parseInt(loadValue("CombatTime")) * 1000;
-            Record.graveTimeOut = Integer.parseInt(loadValue("GraveTime")) * 1000;
+            Record.combatTimeOut = Integer.parseInt(loadValue("CombatTime"));
+            Record.graveTimeOut = Integer.parseInt(loadValue("GraveTime"));
             PvPRewardMessages.setGraveRobMsg(loadValue("GraveRobMessage"));
 
             Record.outlawTag = PvPRewardMessages.format(loadValue("OutlawTag"));
@@ -161,10 +169,10 @@ public class PvPReward extends JavaPlugin {
 
             Rewarder.rewardType = RewardType.valueOf(loadValue("RewardType").toUpperCase().replace(" ", ""));
             Rewarder.percent = Integer.parseInt(loadValue("Percent"));
-            
+
             Rewarder.amount = Double.parseDouble(loadValue("Amount"));
             Record.outlawLevel = (int)Rewarder.amount;
-            
+
             Rewarder.hi = Integer.parseInt(loadValue("High"));
             Rewarder.lo = Integer.parseInt(loadValue("Low"));
 
@@ -172,21 +180,21 @@ public class PvPReward extends JavaPlugin {
             Rewarder.modifier = Integer.parseInt(loadValue("OutlawModifier")) / 100;
             Rewarder.max = Integer.parseInt(loadValue("ModifierMax")) / 100;
             Rewarder.whole = Boolean.parseBoolean(loadValue("WholeNumbers"));
+            PvPRewardCommand.top = Integer.parseInt(loadValue("DefaultTopAmount"));
 
             negative = Boolean.parseBoolean(loadValue("Negative"));
-            
+
             Rewarder.tollDisabledIn = new LinkedList<String>
                     (Arrays.asList(loadValue("DisableDeathTollInWorlds").split(", ")));
             PvPRewardListener.rewardDisabledIn = new LinkedList<String>
                     (Arrays.asList(loadValue("DisableRewardInWorlds").split(", ")));
-            
+
             Record.outlawGroup = loadValue("OutlawGroup");
             Record.removeGroup = Boolean.parseBoolean(loadValue("RemoveFromCurrentGroup"));
-            
+
             fis.close();
-        }
-        catch (Exception missingProp) {
-            System.err.println("Failed to load PvPReward "+this.getDescription().getVersion());
+        } catch (Exception missingProp) {
+            logger.severe("Failed to load PvPReward " + this.getDescription().getVersion());
             missingProp.printStackTrace();
         }
     }
@@ -198,10 +206,9 @@ public class PvPReward extends JavaPlugin {
      * @return The String value of the loaded key
      */
     private String loadValue(String key) {
-        //Print an error if the key is not found
         if (!p.containsKey(key)) {
-            System.err.println("[PvPReward] Missing value for "+key+" in config file");
-            System.err.println("[PvPReward] Please regenerate config file");
+            logger.severe("Missing value for " + key + " in config file");
+            logger.severe("Please regenerate config file");
         }
 
         return p.getProperty(key);
@@ -211,18 +218,19 @@ public class PvPReward extends JavaPlugin {
      * Returns false if either Player does not have proper permission
      * killer will be checked for "pvpreward.getreward"
      * deaded will be checked for "pvpreward.givereward"
-     * 
+     *
      * @param killer The Player who would receive the reward
      * @param deaded The Player who the reward would be taken from
      * @return true both Players have proper permission
      */
     public static boolean hasPermisson(Player killer, Player deaded) {
-        return permission.has(killer, "pvpreward.getreward") && permission.has(deaded, "pvpreward.givereward");
+        return permission.has(killer, "pvpreward.getreward")
+                && permission.has(deaded, "pvpreward.givereward");
     }
-    
+
     /**
      * Returns true the given Player has the given Permission node
-     * 
+     *
      * @param player The Player who would receive the reward
      * @param node The String of the node
      * @return true if either Player does not have proper permission
@@ -230,7 +238,7 @@ public class PvPReward extends JavaPlugin {
     public static boolean hasPermisson(Player player, String node) {
         return permission.has(player, "pvpreward."+node);
     }
-    
+
     /**
      * Subtracts 1 karma from all online Players' Records
      * This is repeated on an interval of the assigned cooldownTime
@@ -242,8 +250,9 @@ public class PvPReward extends JavaPlugin {
                 for (Record record: records.values()) {
                     //Check if the Player is online
                     Player player = server.getPlayer(record.name);
-                    if (player != null)
+                    if (player != null) {
                         record.decrementKarma(player);
+                    }
                 }
 
                 save();
@@ -260,10 +269,11 @@ public class PvPReward extends JavaPlugin {
             File file = new File(dataFolder+"/pvpreward.records");
             if (!file.exists()) {
                 File old = new File(dataFolder+"/pvpreward.save");
-                if (old.exists())
+                if (old.exists()) {
                     old.renameTo(file);
-                else
+                } else {
                     return;
+                }
             }
             
             BufferedReader bReader = new BufferedReader(new FileReader(file));
@@ -280,20 +290,19 @@ public class PvPReward extends JavaPlugin {
                     Record record = new Record(player, kills, deaths, karma);
                     records.put(player, record);
 
-                    if (split.length == 5)
+                    if (split.length == 5) {
                         record.group = split[4];
+                    }
 
                     line = bReader.readLine();
-                }
-                catch (Exception corruptedData) {
+                } catch (Exception corruptedData) {
                     /* Do not load line */
                 }
             }
-            
+
             bReader.close();
-        }
-        catch (Exception loadFailed) {
-            System.out.println("[PvPReward] Load failed");
+        } catch (Exception loadFailed) {
+            logger.info("Load failed");
             loadFailed.printStackTrace();
         }
     }
@@ -304,29 +313,30 @@ public class PvPReward extends JavaPlugin {
      */
     public static void save() {
         try {
-            File file = new File(dataFolder+"/pvpreward.records");
-            if (!file.exists())
+            File file = new File(dataFolder + "/pvpreward.records");
+            if (!file.exists()) {
                 file.createNewFile();
-            
-            BufferedWriter bWriter = new BufferedWriter(new FileWriter(dataFolder+"/pvpreward.records"));
+            }
+
+            BufferedWriter bWriter = new BufferedWriter(new FileWriter(dataFolder + "/pvpreward.records"));
             for (Record record: records.values()) {
                 //Write data in the format "name;kills;deaths;karma(;group)"
                 bWriter.write(record.name.concat(";"));
-                bWriter.write(record.kills+";");
-                bWriter.write(record.deaths+";");
+                bWriter.write(record.kills + ";");
+                bWriter.write(record.deaths + ";");
                 bWriter.write(String.valueOf(record.karma));
-                
-                if (record.group != null)
-                    bWriter.write(";"+record.group);
-                
+
+                if (record.group != null) {
+                    bWriter.write(";" + record.group);
+                }
+
                 //Write each Record on a new line
                 bWriter.newLine();
             }
 
             bWriter.close();
-        }
-        catch (Exception saveFailed) {
-            System.err.println("[PvPReward] Save Failed!");
+        } catch (Exception saveFailed) {
+            logger.severe("Save Failed!");
             saveFailed.printStackTrace();
         }
     }
@@ -334,14 +344,16 @@ public class PvPReward extends JavaPlugin {
     /**
      * Returns the Record for the given Player
      * A new Record is created if one is not found
-     * 
+     *
      * @param player The name of the Player
      * @return The Record of the Player
      */
     public static Record getRecord(String player) {
-        for (Record record: records.values())
-            if (record.name.equalsIgnoreCase(player))
+        for (Record record: records.values()) {
+            if (record.name.equalsIgnoreCase(player)) {
                 return record;
+            }
+        }
 
         //Create a new Record
         Record newRecord = new Record(player);
@@ -351,14 +363,16 @@ public class PvPReward extends JavaPlugin {
 
     /**
      * Returns the Record for the given Player
-     * 
+     *
      * @param player The name of the Player
      * @return The Record of the Player
      */
     public static Record findRecord(String player) {
-        for (Record record: records.values())
-            if (record.name.equalsIgnoreCase(player))
+        for (Record record: records.values()) {
+            if (record.name.equalsIgnoreCase(player)) {
                 return record;
+            }
+        }
 
         //Return null because the Player does not have a Record
         return null;

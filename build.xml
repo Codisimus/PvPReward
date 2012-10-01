@@ -78,7 +78,7 @@
     </target>
     
     <target name="-post-jar">
-        <copy failonerror="true" file="${dist.jar}" todir="I:\Dropbox\Projects\Libraries"/>
+        <copy failonerror="true" file="${dist.jar}" todir="..\Libraries"/>
 
         <delete dir="${build.dir}"/>
     </target>

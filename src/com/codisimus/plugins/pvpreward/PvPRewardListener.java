@@ -40,29 +40,34 @@ public class PvPRewardListener implements Listener {
      */
     @EventHandler (priority = EventPriority.MONITOR)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
-        if (event.isCancelled())
+        if (event.isCancelled()) {
             return;
-        
+        }
+
         //Return if the Enitity damaged is not a Player
         Entity wounded = event.getEntity();
-        if (!(wounded instanceof Player))
+        if (!(wounded instanceof Player)) {
             return;
+        }
 
         //Get the Shooter if the Entity was a Projectile
         Entity attacker = event.getDamager();
-        if (attacker instanceof Projectile)
-            attacker = ((Projectile)attacker).getShooter();
+        if (attacker instanceof Projectile) {
+            attacker = ((Projectile) attacker).getShooter();
+        }
         
         //Return if the event was not PvP
-        if (!(attacker instanceof Player))
+        if (!(attacker instanceof Player)) {
             return;
+        }
 
         //Return if the Player is suicidal
-        if (attacker.equals(wounded))
+        if (attacker.equals(wounded)) {
             return;
+        }
 
-        Record record = PvPReward.getRecord(((Player)wounded).getName());
-        record.startCombat(((Player)attacker).getName());
+        Record record = PvPReward.getRecord(((Player) wounded).getName());
+        record.startCombat(((Player) attacker).getName());
     }
 
     /**
@@ -74,15 +79,17 @@ public class PvPRewardListener implements Listener {
     public void onEntityDeath(EntityDeathEvent event) {
         //Return if the Enitity killed is not a Player
         Entity entitityKilled = event.getEntity();
-        if (!(entitityKilled instanceof Player))
+        if (!(entitityKilled instanceof Player)) {
             return;
+        }
 
-        Player deaded = (Player)entitityKilled;
+        Player deaded = (Player) entitityKilled;
         Record record = PvPReward.getRecord(deaded.getName());
 
         //Dig a grave for the killed Player if the option is enabled
-        if (digGraves)
+        if (digGraves) {
             record.digGrave(event.getDrops(), deaded.getLocation().getBlock());
+        }
 
         //Charge the death toll and return if the Player is not in combat
         if (!record.inCombat) {
@@ -91,14 +98,16 @@ public class PvPRewardListener implements Listener {
         }
 
         //Charge the death toll if it is not disabled for PvP
-        if (!disableTollForPvP)
+        if (!disableTollForPvP) {
             Rewarder.dropMoney(deaded);
+        }
 
         //Reward the PvP if it is not disabled in this world
-        if (!rewardDisabledIn.contains(deaded.getWorld().getName()))
+        if (!rewardDisabledIn.contains(deaded.getWorld().getName())) {
             Rewarder.rewardPvP(deaded, record);
+        }
     }
-    
+
     /**
      * Adds the Outlaw tag to Players who log in with Karma above the Outlaw level
      *
@@ -107,15 +116,17 @@ public class PvPRewardListener implements Listener {
     @EventHandler (priority = EventPriority.MONITOR)
     public void onPlayerJoin (PlayerJoinEvent event) {
         //Return if the reward type is not Karma
-        if (!Rewarder.rewardType.equals(Rewarder.RewardType.KARMA))
+        if (!Rewarder.rewardType.equals(Rewarder.RewardType.KARMA)) {
             return;
+        }
 
         Player player = event.getPlayer();
         Record record = PvPReward.getRecord(player.getName());
 
         //Changes the Player's display name if they are an Outlaw
-        if (record.isOutlaw() && !Record.outlawTag.isEmpty())
+        if (record.isOutlaw() && !Record.outlawTag.isEmpty()) {
             player.setDisplayName(Record.outlawTag+record.name);
+        }
     }
 
     /**
@@ -125,19 +136,22 @@ public class PvPRewardListener implements Listener {
      */
     @EventHandler
     public void onPlayerTeleport (PlayerTeleportEvent event) {
-        if (event.isCancelled())
+        if (event.isCancelled()) {
             return;
-        
+        }
+
         //Return if teleporting while in combat is allowed
-        if (!denyTele)
+        if (!denyTele) {
             return;
+        }
 
         Player player = event.getPlayer();
         Record record = PvPReward.getRecord(player.getName());
 
         //Return if the Player is not in combat
-        if (!record.inCombat)
+        if (!record.inCombat) {
             return;
+        }
 
         //Cancel the event and inflict damage on the Player
         player.sendMessage(PvPRewardMessages.getDenyTeleMsg());
@@ -153,8 +167,9 @@ public class PvPRewardListener implements Listener {
     @EventHandler (priority = EventPriority.MONITOR)
     public void onPlayerQuit (PlayerQuitEvent event) {
         //Return if quiting while in combat is allowed
-        if (!penalizeLoggers)
+        if (!penalizeLoggers) {
             return;
+        }
 
         Player player = event.getPlayer();
         String playerName = player.getName();
@@ -164,19 +179,17 @@ public class PvPRewardListener implements Listener {
         if (record.inCombat) {
             //Reward the attacker as if the quiting Player has died
             Rewarder.rewardPvP(player, record);
-            
-            /*
+
             String logger = record.inCombatWith;
             record.resetCombat();
-            
+
             if (Econ.forceTakeMoney(playerName, loggerPenalty)) {
                 PvPReward.server.broadcastMessage(PvPRewardMessages.getCombatLoggerBroadcast(loggerPenalty, playerName));
                 Econ.giveMoney(logger, loggerPenalty);
             }
-            */
         }
     }
-    
+
     /**
      * Listens for Player's clicking on tombstone signs
      * The Player robs the grave if it is their own
@@ -185,54 +198,64 @@ public class PvPRewardListener implements Listener {
      */
     @EventHandler (priority = EventPriority.MONITOR)
     public void onPlayerInteract (PlayerInteractEvent event) {
-        if (event.isCancelled())
+        if (event.isCancelled()) {
             return;
-        
+        }
+
         //Return if the Action was not clicking a Block
-        if (!(event.getAction().equals(Action.LEFT_CLICK_BLOCK) || event.getAction().equals(Action.RIGHT_CLICK_BLOCK)))
+        if (!(event.getAction().equals(Action.LEFT_CLICK_BLOCK)
+                || event.getAction().equals(Action.RIGHT_CLICK_BLOCK))) {
             return;
+        }
 
         //Return if the clicked Block is not a Sign
         Block block = event.getClickedBlock();
-        if (!block.getType().equals(Material.SIGN_POST))
+        if (!block.getType().equals(Material.SIGN_POST)) {
             return;
+        }
 
         Player player = event.getPlayer();
-        Sign sign = (Sign)block.getState();
+        Sign sign = (Sign) block.getState();
         String name = sign.getLine(2);
 
         //Return if line 2 of the Sign is not the Player's name
-        if (!player.getName().equals(name))
+        if (!player.getName().equals(name)) {
             return;
+        }
 
         Record record = PvPReward.getRecord(name);
 
         //Return if the Player does not have a recent grave
-        if (record == null || record.signLocation == null)
+        if (record == null || record.signLocation == null) {
             return;
+        }
 
         //Allow the Player to rob the grave if the the Sign Locations match
-        if (block.getLocation().equals(record.signLocation))
+        if (block.getLocation().equals(record.signLocation)) {
             record.robGrave(player);
+        }
     }
-    
+
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
-        if (event.isCancelled())
+        if (event.isCancelled()) {
             return;
-        
+        }
+
         Block block = event.getBlock();
-        
+
         //Return if the Block is not a Sign
-        if (block.getTypeId() != 323)
+        if (block.getTypeId() != 323) {
             return;
+        }
 
-        Sign sign = (Sign)block;
+        Sign sign = (Sign) block;
 
-        for (Record record: PvPReward.getRecords())
+        for (Record record: PvPReward.getRecords()) {
             if (record.tombstone.equals(sign)) {
                 event.setCancelled(true);
                 break;
             }
+        }
     }
 }
